@@ -1,0 +1,24 @@
+Package: wsgnstat
+Type: Package
+Title: The Wrapped Skew Generalised Normal Distribution
+Version: 0.1.0
+Authors@R: person("M. Theodor", "Loots", role = c("aut", "cre"), email = "theo.loots@gmail.com")
+Description: The skew generalised normal distribution on the line, constructed as a scale mixture of
+    a uniform and a generalised gamma variable, and its wrapped version on the circle, with density,
+    characteristic function, trigonometric moments, random generation, and estimation by the method
+    of trigonometric moments (minimum distance, with sandwich standard errors) and by maximum
+    likelihood. The characteristic function is evaluated through absolutely convergent integrals
+    (the Fox H-function route), so every routine is available for all positive shape parameters,
+    not only where the Fox-Wright series converges. A pure-C back-end does the numerics and also
+    backs the Python package 'wsgnstat'.
+License: GPL-3
+Encoding: UTF-8
+Imports: stats
+NeedsCompilation: yes
+Config/roxygen2/version: 8.0.0
+Config/testthat/edition: 3
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr

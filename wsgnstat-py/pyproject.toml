@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wsgnstat"
+version = "0.1.0"
+description = "The wrapped skew generalised normal distribution on a shared pure-C back-end (also backing the R package wsgnstat)"
+authors = [{name = "M. Theodor Loots", email = "theo.loots@gmail.com"}]
+license = {text = "GPL-3.0-only"}
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+wsgnstat = ["wsgn.c", "wsgn.h"]

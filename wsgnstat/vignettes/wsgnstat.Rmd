@@ -1,0 +1,93 @@
+---
+title: "The wrapped skew generalised normal distribution"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{The wrapped skew generalised normal distribution}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r setup}
+library(wsgnstat)
+```
+
+## A flexible circular family
+
+Directional data — wind direction, animal headings, phase measurements — live on the circle,
+and the workhorse families there are symmetric or only mildly skew. Wrapping a skew
+generalised normal onto the circle gives a family with a shape parameter `beta` controlling
+tail weight and separate weights `lam1`, `lam2` controlling asymmetry.
+
+```{r}
+x <- seq(-5, 5, length.out = 9)
+round(dsgn(x, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5), 5)
+```
+
+Equal weights give a density symmetric about its location; unequal weights genuinely break it:
+
+```{r}
+xs <- seq(-6, 6, length.out = 2001)
+c(symmetric = max(abs(dsgn(xs, 0, 1, 2, 0.5, 0.5) - dsgn(-xs, 0, 1, 2, 0.5, 0.5))),
+  skew = max(abs(dsgn(xs, 0, 1, 2, 0.8, 0.2) - dsgn(-xs, 0, 1, 2, 0.8, 0.2))))
+```
+
+Wrapping sums the line density over all turns of the circle:
+
+```{r}
+th <- seq(0, 2 * pi, length.out = 2001)
+d <- dwsgn(th, mu = 0, beta = 2, lam = 0.5)
+sum(d) * (th[2] - th[1])
+```
+
+## A closed form that anchors the family
+
+At `beta = 2` with equal weights the generalised normal *is* the normal with
+$\sigma = 1/\sqrt{2}$, so the wrapped family must reproduce the wrapped normal exactly. It does:
+
+```{r}
+tt <- c(0.5, 2.0, 4.5)
+wrapped_normal <- vapply(tt, function(t) sum(dnorm(t + 2 * pi * (-80:80), 0, 1 / sqrt(2))), 0)
+rbind(wsgnstat = dwsgn(tt, 0, 2, 0.5), wrapped_normal = wrapped_normal)
+```
+
+and the trigonometric moments reduce to $\exp(-p^2/4)$:
+
+```{r}
+tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5)
+rbind(engine = tm$A, closed_form = exp(-(1:4)^2 / 4))
+```
+
+## Why the characteristic function matters
+
+Trigonometric moments are the circular analogue of moments, and estimating by matching them
+needs the characteristic function. The usual route is a Fox-Wright series, which converges only
+for part of the parameter space. This package evaluates it instead through absolutely
+convergent integrals, so every `beta > 0` is reachable.
+
+```{r}
+cfsgn(0, 0, 1, 2, 0.5, 0.5)
+Mod(cfsgn(c(0.5, 1.5, 3), 0, 1, 1.3, 0.8, 0.3))
+```
+
+## Estimation
+
+Two estimators are provided: minimum distance on the trigonometric moments, and maximum
+likelihood on the wrapped density.
+
+```{r}
+set.seed(17)
+theta <- rsgn(1500, mu = 1.0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5, wrap = TRUE)
+str(fit_wsgn_trig(theta), max.level = 1)
+```
+
+Standard errors for the likelihood fit come from a parametric bootstrap rather than the
+observed information, because the information is unstable at the cusp near `beta = 1`.
+
+## Implementation
+
+Densities, the characteristic function, the trigonometric moments and both estimators run in a
+shared C back-end that is also bound from Python, and the two front ends agree value by value.
