@@ -1,5 +1,7 @@
 # wsgnstat
 
+[![R-CMD-check](https://github.com/mtloots/wsgnstat/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mtloots/wsgnstat/actions/workflows/R-CMD-check.yaml)
+
 The **skew generalised normal** distribution on the line and its **wrapping onto the circle**.
 Directional data — wind direction, animal headings, phase — need circular families, and the
 workhorses there are symmetric or only mildly skew. This family carries a shape parameter for tail
