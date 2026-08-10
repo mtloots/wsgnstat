@@ -1,0 +1,33 @@
+---
+output: github_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "man/figures/README-")
+```
+
+# wsgnstat
+
+[![R-CMD-check](https://github.com/mtloots/wsgnstat/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mtloots/wsgnstat/actions/workflows/R-CMD-check.yaml)
+
+The **skew generalised normal** on the line and **wrapped onto the circle**, with the
+characteristic function reached through absolutely convergent integrals rather than a series.
+
+Computation runs on a shared pure-C back-end that is also bound from Python, and the two front
+ends are checked against each other value by value.
+
+## Installation
+
+```r
+# install.packages("remotes")
+remotes::install_github("mtloots/wsgnstat", subdir = "wsgnstat")
+```
+
+## Usage
+
+```{r example}
+library(wsgnstat)
+## at shape 2 with equal weights the circular law IS the wrapped normal, exactly
+tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5)
+rbind(engine = tm$A, closed_form = exp(-(1:4)^2 / 4))
+```

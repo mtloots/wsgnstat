@@ -6,12 +6,23 @@ build-backend = "setuptools.build_meta"
 name = "wsgnstat"
 version = "0.1.0"
 description = "The wrapped skew generalised normal distribution on a shared pure-C back-end (also backing the R package wsgnstat)"
+readme = "README.md"
 authors = [{name = "M. Theodor Loots", email = "theo.loots@gmail.com"}]
 license = {text = "GPL-3.0-only"}
 requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-wsgnstat = ["wsgn.c", "wsgn.h"]
+wsgnstat = ["*.c", "*.h"]
