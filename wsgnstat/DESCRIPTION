@@ -11,6 +11,8 @@ Description: The skew generalised normal distribution on the line, constructed a
     (the Fox H-function route), so every routine is available for all positive shape parameters,
     not only where the Fox-Wright series converges. A pure-C back-end does the numerics and also
     backs the Python package 'wsgnstat'.
+URL: https://github.com/mtloots/wsgnstat
+BugReports: https://github.com/mtloots/wsgnstat/issues
 License: GPL-3
 Encoding: UTF-8
 Imports: stats
