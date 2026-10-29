@@ -17,11 +17,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: M. Theodor Loots \email{theo.loots@gmail.com} (\href{https://orcid.org/0000-0001-7722-3913}{ORCID})
+\strong{Maintainer}: M. Theodor Loots \email{theo.loots@gmail.com} (\href{https://orcid.org/0000-0001-7722-3913}{ORCID}) [copyright holder]
 
 Authors:
 \itemize{
-  \item M. Theodor Loots \email{theo.loots@gmail.com} (\href{https://orcid.org/0000-0001-7722-3913}{ORCID})
+  \item M. Theodor Loots \email{theo.loots@gmail.com} (\href{https://orcid.org/0000-0001-7722-3913}{ORCID}) [copyright holder]
 }
 
 }

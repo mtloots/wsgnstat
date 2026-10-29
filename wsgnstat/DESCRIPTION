@@ -4,7 +4,7 @@ Title: The Wrapped Skew Generalised Normal Distribution
 Version: 0.1.0
 Authors@R: 
     person("M. Theodor", "Loots", email = "theo.loots@gmail.com",
-           role = c("aut", "cre"), comment = c(ORCID = "0000-0001-7722-3913"))
+           role = c("aut", "cre", "cph"), comment = c(ORCID = "0000-0001-7722-3913"))
 Description: The skew generalised normal distribution on the line, constructed as a scale mixture of
     a uniform and a generalised gamma variable, and its wrapped version on the circle, with density,
     distribution and quantile functions, characteristic function, trigonometric moments, random
