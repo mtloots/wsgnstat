@@ -1,0 +1,81 @@
+# Build binary wheels and the sdist for the Python front, wsgnstat-py.
+#
+# MANUAL ONLY (workflow_dispatch). Trigger it before a PyPI release; the artefacts are uploaded to
+# the run. Linux x86_64 and macOS arm64, CPython 3.10 to 3.13, matching the package's classifiers.
+# The C has no OpenMP, so there is no runtime library to bundle.
+#
+# PUBLISHING. The publish job uses PyPI trusted publishing and runs only when BOTH the `publish`
+# input is ticked AND the repository variable PYPI_PUBLISHER_READY is 'true'. Set that variable
+# only after a (pending) publisher for project wsgnstat, repository mtloots/wsgnstat, workflow
+# Wheels.yaml has been added on PyPI; until then the job is skipped. The alternative route, used
+# for exactcond, is to download the artefacts and upload them with twine and the token in
+# ~/.pypirc.
+name: wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: publish to PyPI after building (trusted publishing, no token)
+        required: true
+        default: false
+        type: boolean
+
+permissions: read-all
+
+jobs:
+  build:
+    name: wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21.3
+        with:
+          package-dir: wsgnstat-py
+        env:
+          CIBW_BUILD: cp310-* cp311-* cp312-* cp313-*
+          CIBW_SKIP: "*-musllinux_* *_i686"
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_ARCHS_MACOS: arm64
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: python -m pytest -q {package}/tests
+
+      - name: Build sdist
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m pip install --upgrade build
+          python -m build --sdist --outdir wheelhouse wsgnstat-py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-wsgnstat-py-${{ matrix.os }}
+          path: ./wheelhouse/*
+
+  publish:
+    name: publish wsgnstat to PyPI
+    needs: build
+    if: inputs.publish && vars.PYPI_PUBLISHER_READY == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-wsgnstat-py-*
+          path: dist
+          merge-multiple: true
+      - name: What is about to be published
+        run: ls -l dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

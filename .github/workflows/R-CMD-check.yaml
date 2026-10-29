@@ -1,20 +1,22 @@
-# Two tiers, because these repositories are private and Actions minutes are metered:
-# Linux counts 1x, Windows 2x, macOS 10x.
+# Modelled on exactcond's and arcstat's workflow, adapted to this repository's layout: the R
+# package lives in wsgnstat/ and the Python front in wsgnstat-py/, hence working-directory below.
 #
-#   quick   runs on every push. Linux only. This is where the portability answers actually
-#           live: the C back-end is developed on macOS against homebrew's libomp, and the
-#           question that matters is whether it still builds where SHLIB_OPENMP_CFLAGS is
-#           supplied by the toolchain instead.
-#   matrix  the CRAN-like matrix across three R versions and three platforms. Run it by hand
-#           from the Actions tab before a submission, not on every push.
+#   quick   every push and pull request; Linux release only, the fast gate.
+#   python  the Python front's own tests (it carries its own copy of the shared C).
+#   matrix  the CRAN-like matrix: Linux R devel, release and oldrel-1, macOS and Windows release.
+#           Runs on every push to main, weekly, and on demand, so that the r-devel declaration at
+#           CRAN submission is true of the code being submitted.
 #
-# The package lives in a subdirectory of this repository (the repo root holds the R package,
-# the Python package and the parity harnesses side by side), hence working-directory below.
+# While the repository is PRIVATE, Actions minutes are metered (macOS 10x, Windows 2x); the
+# repository must be public before CRAN submission in any case (otherwise a URL NOTE), after
+# which the minutes are free.
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 1'
 
 name: R-CMD-check
 
@@ -37,14 +39,34 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
+          needs: check
           working-directory: wsgnstat
       - uses: r-lib/actions/check-r-package@v2
         with:
           working-directory: wsgnstat
           upload-snapshots: true
 
+  python:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    name: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependency
+        run: python -m pip install --upgrade pip pytest
+      - name: Check the Python copy of the C back-end matches the R copy
+        run: sh parity_sync_guard.sh wsgnstat/src wsgnstat-py/src
+      - name: Run the wsgnstat tests
+        working-directory: wsgnstat-py
+        env:
+          PYTHONPATH: src
+        run: python -m pytest tests -q
+
   matrix:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
     strategy:
@@ -70,6 +92,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
+          needs: check
           working-directory: wsgnstat
       - uses: r-lib/actions/check-r-package@v2
         with:

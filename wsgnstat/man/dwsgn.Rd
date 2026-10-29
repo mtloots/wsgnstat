@@ -15,7 +15,10 @@ dwsgn(theta, mu = 0, beta = 2, lam = 0.5, K = 50)
 
 \item{lam}{skewness parameter in (0, 1); \code{0.5} is symmetric.}
 
-\item{K}{truncation of the wrapping sum (\code{abs(k) <= K}).}
+\item{K}{truncation of the wrapping sum (\code{abs(k) <= K}). The default \code{50} captures the
+whole mass to double precision for \code{beta >= 0.8}; for very heavy tails (\code{beta} near
+\code{0.3}) it does not, and \code{pwsgn(2 * pi, mu, beta, lam, K)} reports the mass that the
+truncated sum captures, so \code{K} can be raised until that is one.}
 }
 \value{
 the wrapped probability density function evaluated at \code{theta}.
@@ -26,7 +29,15 @@ The identified parameterisation is used: \code{lam1 = lam}, \code{lam2 = 1 - lam
 the tail parameter \code{beta} and the skewness \code{lam}.
 }
 \examples{
-## at beta = 2 with equal weights the circular law IS the wrapped normal
+## a skew member drawn on the circle as a radial curve about the unit circle
+th <- seq(0, 2 * pi, length.out = 721)
+d <- dwsgn(th, mu = pi / 2, beta = 1.5, lam = 0.3)
+plot(cos(th), sin(th), type = "l", asp = 1, xlim = c(-2, 2), ylim = c(-2, 2),
+     xlab = "", ylab = "", lty = 3)
+lines((1 + d) * cos(th), (1 + d) * sin(th))
+## the density integrates to one over the circle
+sum(d[-1]) * (th[2] - th[1])
+## at beta = 2 with lam = 0.5 the circular law IS the wrapped normal
 ## with sigma = 1/sqrt(2), which anchors the wrapping machinery exactly
 tt <- c(0.5, 2.0, 4.5)
 wn <- vapply(tt, function(t) sum(dnorm(t + 2 * pi * (-80:80), 0, 1 / sqrt(2))), 0)

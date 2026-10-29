@@ -6,14 +6,22 @@
 \alias{wsgnstat-package}
 \title{wsgnstat: The Wrapped Skew Generalised Normal Distribution}
 \description{
-The skew generalised normal distribution on the line, constructed as a scale mixture of a uniform and a generalised gamma variable, and its wrapped version on the circle, with density, characteristic function, trigonometric moments, random generation, and estimation by the method of trigonometric moments (minimum distance, with sandwich standard errors) and by maximum likelihood. The characteristic function is evaluated through absolutely convergent integrals (the Fox H-function route), so every routine is available for all positive shape parameters, not only where the Fox-Wright series converges. A pure-C back-end does the numerics and also backs the Python package 'wsgnstat'.
+The skew generalised normal distribution on the line, constructed as a scale mixture of a uniform and a generalised gamma variable, and its wrapped version on the circle, with density, distribution and quantile functions, characteristic function, trigonometric moments, random generation, and estimation by the method of trigonometric moments (minimum distance, with sandwich standard errors) and by maximum likelihood. The characteristic function is evaluated through absolutely convergent integrals (the Fox H-function route), so every routine is available for all positive shape parameters, not only where the Fox-Wright series converges. A pure-C back-end does the numerics and also backs the 'Python' package 'wsgnstat'.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/mtloots/wsgnstat}
+  \item Report bugs at \url{https://github.com/mtloots/wsgnstat/issues}
+}
+
 }
 \author{
-\strong{Maintainer}: M. Theodor Loots \email{theo.loots@gmail.com}
+\strong{Maintainer}: M. Theodor Loots \email{theo.loots@gmail.com} (\href{https://orcid.org/0000-0001-7722-3913}{ORCID})
 
 Authors:
 \itemize{
-  \item M. Theodor Loots \email{theo.loots@gmail.com}
+  \item M. Theodor Loots \email{theo.loots@gmail.com} (\href{https://orcid.org/0000-0001-7722-3913}{ORCID})
 }
 
 }

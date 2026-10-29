@@ -17,7 +17,9 @@ the wrapped normal with sigma = 1/sqrt(2), and its trigonometric moments are exa
 
 One shared pure-C back-end serves two front ends:
 
-	wsgnstat/      R package      (.C bindings; R CMD check: Status OK)
-	wsgnstat-py/   Python package (ctypes; compiles the same C on first import)
+	wsgnstat/      R package      (.C bindings)
+	wsgnstat-py/   Python package (ctypes; pip builds the same C at install time, and a source
+	               checkout compiles it on first import)
 
-The two are checked against each other value by value.
+The two are checked against each other value by value; parity_sync_guard.sh confirms the two
+copies of the C source are identical before any such comparison is trusted.

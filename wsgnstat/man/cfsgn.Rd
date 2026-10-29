@@ -27,7 +27,15 @@ Evaluated through the absolutely convergent cosine and sine integrals underlying
 H-function representation, hence valid for every \code{beta > 0}.
 }
 \examples{
-## reached through absolutely convergent integrals, so every beta > 0 is available
+## reached through absolutely convergent integrals, so every beta > 0 is available,
+## including beta <= 1, where the Fox-Wright series does not converge for all t
 cfsgn(0, 0, 1, 2, 0.5, 0.5)
-Mod(cfsgn(c(0.5, 1.5, 3), 0, 1, 1.3, 0.8, 0.3))
+## the normal member: exp(-t^2 / 4) for N(0, 1/2)
+t <- c(0.5, 1.5, 3)
+rbind(engine = Re(cfsgn(t, 0, 0.5, 2, 0.5, 0.5)), closed_form = exp(-t^2 / 4))
+## a skew member with beta = 0.8, against the Fourier transform of the density
+x <- seq(-60, 60, length.out = 120001)
+f <- dsgn(x, 0, 1, 0.8, 0.8, 0.3)
+c(engine = cfsgn(1.1, 0, 1, 0.8, 0.8, 0.3),
+  quadrature = sum(exp(1i * 1.1 * x) * f) * (x[2] - x[1]))
 }

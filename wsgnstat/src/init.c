@@ -10,6 +10,9 @@ static const R_CMethodDef CEntries[] = {
   {"wsgn_cf",       (DL_FUNC) &wsgn_cf,       9},
   {"wsgn_trigmom",  (DL_FUNC) &wsgn_trigmom,  6},
   {"wsgn_nll",      (DL_FUNC) &wsgn_nll,      7},
+  {"wsgn_pdist",    (DL_FUNC) &wsgn_pdist,    8},
+  {"wsgn_wcdf",     (DL_FUNC) &wsgn_wcdf,     7},
+  {"wsgn_wquant",   (DL_FUNC) &wsgn_wquant,   7},
   {NULL, NULL, 0}
 };
 

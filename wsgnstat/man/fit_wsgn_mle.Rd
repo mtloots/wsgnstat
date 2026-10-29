@@ -24,3 +24,16 @@ Nelder-Mead over the identified parameters, with the wrapped log-likelihood eval
 Standard errors, when requested, come from a parametric bootstrap, the observed information
 being unstable near the interior cusp the density develops as \code{beta} approaches one.
 }
+\examples{
+set.seed(12)
+truth <- c(mu = 1, beta = 1.5, lam = 0.3)
+th <- rwsgn(500, truth["mu"], truth["beta"], truth["lam"])
+fit <- fit_wsgn_mle(th)
+round(rbind(truth = truth, estimate = fit$par), 3)
+fit$logLik
+\donttest{
+## bootstrap standard errors refit the model once per replicate (a few seconds for B = 30)
+fit_b <- fit_wsgn_mle(th, B = 30)
+round(rbind(estimate = fit_b$par, se = fit_b$se), 3)
+}
+}

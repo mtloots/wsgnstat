@@ -1,0 +1,11 @@
+bibentry(
+  bibtype = "Manual",
+  title = "{wsgnstat}: The Wrapped Skew Generalised Normal Distribution",
+  author = person("M. Theodor", "Loots", comment = c(ORCID = "0000-0001-7722-3913")),
+  year = "2026",
+  note = paste("R package version", meta$Version),
+  url = "https://github.com/mtloots/wsgnstat",
+  textVersion = paste0(
+    "Loots, M. T. (2026). wsgnstat: The Wrapped Skew Generalised Normal Distribution. ",
+    "R package version ", meta$Version, ". https://github.com/mtloots/wsgnstat")
+)

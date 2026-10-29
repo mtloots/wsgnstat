@@ -20,3 +20,11 @@ Minimum-distance matching of the first two sample trigonometric moments to their
 counterparts, evaluated in C through the integral characteristic function, hence available for
 every \code{beta > 0}. Standard errors come from the minimum-distance sandwich.
 }
+\examples{
+## simulate from a known member and recover it
+set.seed(11)
+truth <- c(mu = 1, beta = 1.5, lam = 0.3)
+th <- rwsgn(1000, truth["mu"], truth["beta"], truth["lam"])
+fit <- fit_wsgn_trig(th)
+round(rbind(truth = truth, estimate = fit$par, se = fit$se), 3)
+}

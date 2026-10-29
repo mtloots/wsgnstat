@@ -36,6 +36,20 @@ void wsgn_trigmom(const int *P, const double *mu, const double *beta, const doub
 void wsgn_nll(const double *theta, const int *nt, const double *mu, const double *beta,
               const double *lam, const int *K, double *out);
 
+/* Distribution function of the line law at x (length nx), through the regularised incomplete
+ * gamma function, into out. */
+void wsgn_pdist(const double *x, const int *nx, const double *mu, const double *sigma,
+                const double *beta, const double *lam1, const double *lam2, double *out);
+
+/* Wrapped distribution function on [0, 2*pi), measured anticlockwise from angle 0, under the
+ * identified parameterisation, wrapping sum truncated at |k| <= K, into out. */
+void wsgn_wcdf(const double *theta, const int *nt, const double *mu, const double *beta,
+               const double *lam, const int *K, double *out);
+
+/* Wrapped quantile function: the angle in [0, 2*pi) at which wsgn_wcdf reaches p, by bisection. */
+void wsgn_wquant(const double *p, const int *np, const double *mu, const double *beta,
+                 const double *lam, const int *K, double *out);
+
 #ifdef __cplusplus
 }
 #endif

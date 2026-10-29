@@ -28,3 +28,15 @@ a numeric vector of draws.
 Uses the stochastic representation: \code{U^beta} is Gamma with shape \code{1 + 1/beta}, a
 uniform variate is drawn conditionally, and the product is wrapped when \code{wrap = TRUE}.
 }
+\examples{
+set.seed(2)
+x <- rsgn(5000, mu = 0, sigma = 1, beta = 1.3, lam1 = 0.3, lam2 = 0.8)
+hist(x, breaks = 60, freq = FALSE, main = "")
+curve(dsgn(x, 0, 1, 1.3, 0.3, 0.8), add = TRUE)
+## mass left of the location: lam1 / (lam1 + lam2) = 0.2727
+mean(x < 0)
+}
+\seealso{
+\code{\link{rwsgn}} for draws from the wrapped law in its identified
+  parameterisation.
+}

@@ -1,93 +1,272 @@
 ---
-title: "The wrapped skew generalised normal distribution"
+title: "wsgnstat: the wrapped skew generalised normal distribution"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{The wrapped skew generalised normal distribution}
+  %\VignetteIndexEntry{wsgnstat: the wrapped skew generalised normal distribution}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6, fig.height = 4,
+                      dpi = 72)
+has_circular <- requireNamespace("circular", quietly = TRUE)
+if (has_circular) {
+  wind_env <- new.env()
+  utils::data("wind", package = "circular", envir = wind_env)
+}
 ```
 
 ```{r setup}
 library(wsgnstat)
 ```
 
-## A flexible circular family
+## The law and its parameters
 
-Directional data — wind direction, animal headings, phase measurements — live on the circle,
-and the workhorse families there are symmetric or only mildly skew. Wrapping a skew
-generalised normal onto the circle gives a family with a shape parameter `beta` controlling
-tail weight and separate weights `lam1`, `lam2` controlling asymmetry.
+On the line, the skew generalised normal distribution has the two-piece exponential-power density
 
-```{r}
-x <- seq(-5, 5, length.out = 9)
-round(dsgn(x, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5), 5)
+$$
+f(x) = c \, \exp\!\left\{-\left(\frac{\lambda_{\pm} |x - \mu|}{\sigma}\right)^{\beta}\right\},
+\qquad
+c = \frac{1}{\sigma \, (1/\lambda_1 + 1/\lambda_2) \, \Gamma(1 + 1/\beta)},
+$$
+
+with $\lambda_1$ to the right of the location $\mu$ and $\lambda_2$ to its left. It is the scale
+mixture of a uniform variable and a generalised gamma variable, which is how `rsgn()` draws from it.
+The shape $\beta > 0$ governs the tails ($\beta = 2$ is Gaussian, $\beta = 1$ Laplace-like, smaller
+values heavier), and the pair $(\lambda_1, \lambda_2)$ the asymmetry: the mass to the left of $\mu$
+is $\lambda_1 / (\lambda_1 + \lambda_2)$.
+
+Wrapping onto the circle sums the line density over all turns,
+$f_W(\theta) = \sum_k f(\theta + 2\pi k)$. On the circle the package uses the identified
+parameterisation $\lambda_1 = \lambda$, $\lambda_2 = 1 - \lambda$ and
+$\sigma = \sqrt{\lambda (1 - \lambda)}$, so the circular law has three parameters: the location
+`mu`, the tail parameter `beta` and the skewness `lam`, with `lam = 0.5` symmetric. For a skew law
+`mu` is the junction of the two pieces, not the mean direction.
+
+```{r family, fig.cap = "Wrapped densities for three tail parameters, symmetric (solid) and skew (dashed)."}
+th <- seq(0, 2 * pi, length.out = 721)
+op <- par(mfrow = c(1, 3), mar = c(4, 4, 2, 1))
+for (b in c(0.8, 1.5, 3)) {
+  plot(th, dwsgn(th, mu = pi, beta = b, lam = 0.5), type = "l", ylim = c(0, 1.2),
+       xlab = "angle (radians)", ylab = "density", main = paste("beta =", b))
+  lines(th, dwsgn(th, mu = pi, beta = b, lam = 0.25), lty = 2)
+}
+par(op)
 ```
 
-Equal weights give a density symmetric about its location; unequal weights genuinely break it:
+## Density, distribution function, quantiles and random generation
 
-```{r}
-xs <- seq(-6, 6, length.out = 2001)
-c(symmetric = max(abs(dsgn(xs, 0, 1, 2, 0.5, 0.5) - dsgn(-xs, 0, 1, 2, 0.5, 0.5))),
-  skew = max(abs(dsgn(xs, 0, 1, 2, 0.8, 0.2) - dsgn(-xs, 0, 1, 2, 0.8, 0.2))))
+The four functions follow R's usual naming. The distribution function is measured anticlockwise
+from angle zero and is computed exactly, as a sum over turns of incomplete gamma functions, so it
+needs no numerical quadrature; the quantile function inverts it.
+
+```{r dpqr}
+mu <- 1
+beta <- 1.5
+lam <- 0.3
+dwsgn(c(0.5, 1, 2), mu, beta, lam)
+pwsgn(c(0.5, 1, 2), mu, beta, lam)
+qwsgn(c(0.1, 0.5, 0.9), mu, beta, lam)
 ```
 
-Wrapping sums the line density over all turns of the circle:
+The distribution function agrees with direct numerical integration of the density, and the
+density integrates to one over the circle:
 
-```{r}
-th <- seq(0, 2 * pi, length.out = 2001)
-d <- dwsgn(th, mu = 0, beta = 2, lam = 0.5)
-sum(d) * (th[2] - th[1])
+```{r dpqr-check}
+c(pwsgn = pwsgn(2, mu, beta, lam),
+  integrate = integrate(dwsgn, 0, 2, mu = mu, beta = beta, lam = lam)$value,
+  total = integrate(dwsgn, 0, 2 * pi, mu = mu, beta = beta, lam = lam)$value)
 ```
 
-## A closed form that anchors the family
+Draws in the identified parameterisation come from `rwsgn()`; `rsgn()` draws on the line, and
+wraps if asked, for any $(\sigma, \lambda_1, \lambda_2)$.
 
-At `beta = 2` with equal weights the generalised normal *is* the normal with
-$\sigma = 1/\sqrt{2}$, so the wrapped family must reproduce the wrapped normal exactly. It does:
-
-```{r}
-tt <- c(0.5, 2.0, 4.5)
-wrapped_normal <- vapply(tt, function(t) sum(dnorm(t + 2 * pi * (-80:80), 0, 1 / sqrt(2))), 0)
-rbind(wsgnstat = dwsgn(tt, 0, 2, 0.5), wrapped_normal = wrapped_normal)
+```{r rwsgn, fig.cap = "A sample of 5000 draws with the wrapped density overlaid."}
+set.seed(1)
+x <- rwsgn(5000, mu, beta, lam)
+hist(x, breaks = seq(0, 2 * pi, length.out = 49), freq = FALSE, main = "",
+     xlab = "angle (radians)")
+curve(dwsgn(x, mu, beta, lam), 0, 2 * pi, add = TRUE, lwd = 2)
 ```
 
-and the trigonometric moments reduce to $\exp(-p^2/4)$:
+A Kolmogorov-Smirnov distance between the sample and the exact distribution function confirms the
+agreement:
 
-```{r}
+```{r ks}
+u <- sort(pwsgn(x, mu, beta, lam))
+n <- length(u)
+c(KS = max(pmax((1:n) / n - u, u - (0:(n - 1)) / n)), five_per_cent_critical = 1.358 / sqrt(n))
+```
+
+## Reductions to known circular laws
+
+At $\beta = 2$ the line law is the two-piece (split) normal, so the circular law is the wrapped
+split normal; with `lam = 0.5` as well, $\sigma = 1/2$ and the rate is one on both sides, so the
+line law is $N(0, 1/2)$ and the circular law is the wrapped normal with $\sigma = 1/\sqrt{2}$.
+Both reductions can be checked against densities built directly from `dnorm()`:
+
+```{r wn}
+tt <- c(0.5, 2, 4.5)
+k <- -60:60
+wrapped_normal <- vapply(tt, function(t) sum(dnorm(t + 2 * pi * k, 0, sqrt(1 / 2))), 0)
+rbind(wsgnstat = dwsgn(tt, mu = 0, beta = 2, lam = 0.5), wrapped_normal = wrapped_normal)
+
+## wrapped split normal: standard deviation sigma / (sqrt(2) lam) on the right of mu and
+## sigma / (sqrt(2) (1 - lam)) on the left, with left mass lam
+l <- 0.3
+s <- sqrt(l * (1 - l))
+split_normal <- function(x) {
+  sr <- s / (sqrt(2) * l)
+  sl <- s / (sqrt(2) * (1 - l))
+  ifelse(x >= 0, 2 * (1 - l) * dnorm(x, 0, sr), 2 * l * dnorm(x, 0, sl))
+}
+wrapped_split <- vapply(tt, function(t) sum(split_normal(t + 2 * pi * k)), 0)
+rbind(wsgnstat = dwsgn(tt, mu = 0, beta = 2, lam = l), wrapped_split_normal = wrapped_split)
+```
+
+The trigonometric moments of the wrapped normal are $\exp(-p^2 \sigma^2 / 2) = \exp(-p^2/4)$, and
+the engine reproduces them through its characteristic function:
+
+```{r tm}
 tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5)
 rbind(engine = tm$A, closed_form = exp(-(1:4)^2 / 4))
 ```
 
-## Why the characteristic function matters
+In the identified parameterisation the concentration of the symmetric members is tied to the tail
+parameter, so the wrapped normal reached at $\beta = 2$ is the one with $\sigma = 1/\sqrt{2}$; the
+skew members at $\beta = 2$ are wrapped split normals of the matching scale.
 
-Trigonometric moments are the circular analogue of moments, and estimating by matching them
-needs the characteristic function. The usual route is a Fox-Wright series, which converges only
-for part of the parameter space. This package evaluates it instead through absolutely
-convergent integrals, so every `beta > 0` is reachable.
+The wrapped skew-normal of Pewsey (2000) skews the normal differently, through the factor
+$2\Phi(\alpha z)$ of Azzalini's construction rather than through two pieces. The two families
+share the wrapped normal, at $\alpha = 0$ there and at $\beta = 2$, `lam = 0.5` here:
 
-```{r}
-cfsgn(0, 0, 1, 2, 0.5, 0.5)
-Mod(cfsgn(c(0.5, 1.5, 3), 0, 1, 1.3, 0.8, 0.3))
+```{r wsn}
+dwsn <- function(theta, xi, omega, alpha, k = -60:60) {
+  vapply(theta, function(t) {
+    z <- (t + 2 * pi * k - xi) / omega
+    sum(2 / omega * dnorm(z) * pnorm(alpha * z))
+  }, 0)
+}
+rbind(wrapped_skew_normal_alpha0 = dwsn(tt, 0, sqrt(1 / 2), 0),
+      wsgnstat = dwsgn(tt, mu = 0, beta = 2, lam = 0.5))
 ```
 
-## Estimation
+Away from the wrapped normal the two skewing mechanisms give different shapes (two half-normals
+joined at the mode, against a normal density reweighted by a normal distribution function), so
+neither family contains the other's skew members.
 
-Two estimators are provided: minimum distance on the trigonometric moments, and maximum
-likelihood on the wrapped density.
+## Estimation from simulated data
 
-```{r}
+Two estimators are provided. `fit_wsgn_trig()` matches the first two sample trigonometric moments
+to their population values (minimum distance, with sandwich standard errors); the population
+moments come from the characteristic function, which is evaluated through absolutely convergent
+integrals and is therefore available for every $\beta > 0$, including $\beta \le 1$, where the
+Fox-Wright series representation does not converge everywhere. `fit_wsgn_mle()` maximises the
+wrapped likelihood, starting from the moment estimate; its standard errors, when asked for, come
+from a parametric bootstrap, because the observed information is unstable near the cusp the
+density develops as $\beta$ approaches one.
+
+```{r sim}
+truth <- c(mu = 4, beta = 0.8, lam = 0.6)
 set.seed(17)
-theta <- rsgn(1500, mu = 1.0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5, wrap = TRUE)
-str(fit_wsgn_trig(theta), max.level = 1)
+y <- rwsgn(2000, truth["mu"], truth["beta"], truth["lam"])
+ft <- fit_wsgn_trig(y)
+fm <- fit_wsgn_mle(y)
+round(rbind(truth = truth, moments = ft$par, moments_se = ft$se, likelihood = fm$par), 3)
 ```
 
-Standard errors for the likelihood fit come from a parametric bootstrap rather than the
-observed information, because the information is unstable at the cusp near `beta = 1`.
+The moment estimates lie within `r round(max(abs((ft$par - truth) / ft$se)), 1)` of their own
+standard errors of the truth in every coordinate, and the likelihood estimates within
+`r round(max(abs(fm$par - truth)), 3)` of it in every coordinate, at a heavy-tailed shape
+($\beta = 0.8$) where the characteristic function is reached only through the integral route.
+Bootstrap standard errors for the likelihood fit refit the model once per replicate; a small run
+at a lighter-tailed member:
+
+```{r boot}
+truth2 <- c(mu = 1, beta = 1.5, lam = 0.3)
+set.seed(18)
+y2 <- rwsgn(500, truth2["mu"], truth2["beta"], truth2["lam"])
+fb <- fit_wsgn_mle(y2, B = 30)
+round(rbind(truth = truth2, estimate = fb$par, bootstrap_se = fb$se), 3)
+```
+
+## An application: wind directions at Col de la Roa
+
+The `wind` data in the 'circular' package hold `r if (has_circular) length(wind_env$wind) else 310`
+wind directions, in radians, recorded at a meteorological station in the Italian Alps between
+January and March 2001 (Agostinelli 2007). This section runs only when 'circular' is installed.
+
+```{r wind, eval = has_circular}
+w <- as.numeric(wind_env$wind) %% (2 * pi)
+fw_t <- fit_wsgn_trig(w)
+fw <- fit_wsgn_mle(w)
+round(rbind(moments = fw_t$par, moments_se = fw_t$se, likelihood = fw$par), 3)
+```
+
+For comparison, the wrapped normal and wrapped Cauchy laws are fitted by maximum likelihood with
+the 'circular' package, and the three fits are set side by side by log-likelihood and AIC.
+
+```{r wind-compare, eval = has_circular}
+wc <- circular::circular(w, type = "angles", units = "radians", template = "none",
+                         modulo = "asis", zero = 0, rotation = "counter")
+f_wn <- circular::mle.wrappednormal(wc)
+f_wc <- circular::mle.wrappedcauchy(wc)
+ll <- c(wsgn = fw$logLik,
+        wrapped_normal = sum(log(circular::dwrappednormal(wc, f_wn$mu, f_wn$rho))),
+        wrapped_cauchy = sum(log(circular::dwrappedcauchy(wc, f_wc$mu, f_wc$rho))))
+npar <- c(3, 2, 2)
+round(cbind(logLik = ll, parameters = npar, AIC = -2 * ll + 2 * npar), 1)
+```
+
+```{r wind-plot, eval = has_circular, fig.cap = "Wind directions with the fitted wrapped skew generalised normal density."}
+hist(w, breaks = seq(0, 2 * pi, length.out = 37), freq = FALSE, main = "",
+     xlab = "direction (radians)")
+curve(dwsgn(x, fw$par["mu"], fw$par["beta"], fw$par["lam"]), 0, 2 * pi, add = TRUE, lwd = 2)
+```
+
+A goodness-of-fit look uses the probability integral transform: under a correct model,
+`pwsgn()` at the fitted parameters carries the data to uniform values on $(0, 1)$. Kuiper's
+statistic suits the circle because it does not depend on where the origin is placed. The
+reference distribution below ignores the estimation of the parameters, so the p-value is
+approximate (conservative).
+
+```{r wind-gof, eval = has_circular, fig.cap = "Probability-probability plot of the fitted model."}
+u <- sort(pwsgn(w, fw$par["mu"], fw$par["beta"], fw$par["lam"]))
+n <- length(u)
+plot((1:n) / (n + 1), u, xlab = "uniform plotting position", ylab = "fitted distribution function",
+     pch = 20, cex = 0.6, asp = 1)
+abline(0, 1, lty = 2)
+V <- max((1:n) / n - u) + max(u - (0:(n - 1)) / n)
+Vstar <- V * (sqrt(n) + 0.155 + 0.24 / sqrt(n))
+kuiper_p <- function(v) {
+  j <- 1:100
+  min(1, sum(2 * (4 * j^2 * v^2 - 1) * exp(-2 * j^2 * v^2)))
+}
+c(V = V, V_star = Vstar, approximate_p = kuiper_p(Vstar))
+```
+
+The modified Kuiper statistic, `r if (has_circular) round(Vstar, 2) else "(not computed)"`, lies
+well beyond its 1 per cent critical value of 2.001 (Stephens 1970), so the fitted law is not an
+adequate description of these data in the absolute sense, although its AIC is
+`r if (has_circular) round(diff((-2 * ll + 2 * npar)[c("wsgn", "wrapped_normal")]), 1) else "(not computed)"`
+below that of the wrapped normal. Of the three laws compared, the smallest AIC belongs to the
+`r if (has_circular) c(wsgn = "wrapped skew generalised normal", wrapped_normal = "wrapped normal", wrapped_cauchy = "wrapped Cauchy")[names(which.min(-2 * ll + 2 * npar))] else "(not computed)"`
+law. The comparison is relative: a fit judged best among three may still be rejected, as here.
 
 ## Implementation
 
-Densities, the characteristic function, the trigonometric moments and both estimators run in a
-shared C back-end that is also bound from Python, and the two front ends agree value by value.
+Densities, distribution functions, quantiles, the characteristic function, the trigonometric moments
+and the likelihood are computed by a pure-C back-end shared with the Python package 'wsgnstat',
+which compiles the same source; the two front ends return the same values for the same inputs.
+
+## References
+
+Agostinelli, C. (2007). Robust estimation for circular data. *Computational Statistics and Data
+Analysis*, 51(12), 5867--5875.
+
+Pewsey, A. (2000). The wrapped skew-normal distribution on the circle. *Communications in
+Statistics -- Theory and Methods*, 29(11), 2459--2472.
+
+Stephens, M. A. (1970). Use of the Kolmogorov-Smirnov, Cramér-von Mises and related statistics
+without extensive tables. *Journal of the Royal Statistical Society, Series B*, 32(1), 115--122.

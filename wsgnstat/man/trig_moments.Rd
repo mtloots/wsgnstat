@@ -23,7 +23,12 @@ a list with components \code{A} and \code{B}, the cosine and sine moments for
 Population trigonometric moments of the wrapped family (C back-end)
 }
 \examples{
-## the same reduction in the trigonometric moments: exp(-p^2 / 4)
+## the reduction to the wrapped normal in the trigonometric moments: exp(-p^2 / 4)
 tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5)
 rbind(engine = tm$A, closed_form = exp(-(1:4)^2 / 4))
+## a skew member: the first moment against a large simulated sample
+tm1 <- trig_moments(1, mu = 1, beta = 1.5, lam = 0.3)
+set.seed(1)
+th <- rwsgn(1e5, mu = 1, beta = 1.5, lam = 0.3)
+rbind(population = c(tm1$A, tm1$B), sample = c(mean(cos(th)), mean(sin(th))))
 }

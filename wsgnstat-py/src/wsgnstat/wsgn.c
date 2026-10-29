@@ -128,3 +128,120 @@ void wsgn_nll(const double *theta, const int *nt, const double *mu, const double
     }
     *out = s;
 }
+
+/* Regularised incomplete gamma functions P(a, x) and Q(a, x) = 1 - P(a, x), a > 0, x >= 0: the
+ * power series where it converges fast (x < a + 1) and the Legendre continued fraction (modified
+ * Lentz) otherwise, each returning the smaller tail directly so that neither is formed as a
+ * difference of numbers near one. */
+static void incgamma(double a, double x, double *P, double *Q)
+{
+    if (isnan(x)) { *P = NAN; *Q = NAN; return; }
+    if (x <= 0.0) { *P = 0.0; *Q = 1.0; return; }
+    if (isinf(x)) { *P = 1.0; *Q = 0.0; return; }
+    double lpre = a * log(x) - x - lgamma(a);
+    if (x < a + 1.0) {
+        double ap = a, del = 1.0 / a, sum = del;
+        for (int n = 0; n < 100000; n++) {
+            ap += 1.0; del *= x / ap; sum += del;
+            if (fabs(del) < fabs(sum) * 1e-16) break;
+        }
+        *P = sum * exp(lpre);
+        if (*P > 1.0) *P = 1.0;
+        *Q = 1.0 - *P;
+    } else {
+        const double tiny = 1e-300;
+        double b = x + 1.0 - a, c = 1.0 / tiny, d = 1.0 / b, h = d;
+        for (int i = 1; i < 100000; i++) {
+            double an = -i * (i - a);
+            b += 2.0;
+            d = an * d + b; if (fabs(d) < tiny) d = tiny;
+            c = b + an / c; if (fabs(c) < tiny) c = tiny;
+            d = 1.0 / d;
+            double del = d * c;
+            h *= del;
+            if (fabs(del - 1.0) < 1e-16) break;
+        }
+        *Q = exp(lpre) * h;
+        if (*Q > 1.0) *Q = 1.0;
+        *P = 1.0 - *Q;
+    }
+}
+
+/* P(a < X <= b) for the line law, a <= b, from the two-piece incomplete-gamma form:
+ * left of mu the mass beyond distance d is wL Q(1/beta, (lam2 d / sigma)^beta) with
+ * wL = lam1 / (lam1 + lam2); right of mu it is wR Q(1/beta, (lam1 d / sigma)^beta) with
+ * wR = lam2 / (lam1 + lam2). */
+static double line_mass(double a, double b, double mu, double sigma, double beta,
+                        double lam1, double lam2)
+{
+    double wL = lam1 / (lam1 + lam2), wR = lam2 / (lam1 + lam2), sh = 1.0 / beta;
+    double Pa, Qa, Pb, Qb;
+    if (b <= mu) {
+        incgamma(sh, pow(lam2 * (mu - a) / sigma, beta), &Pa, &Qa);
+        incgamma(sh, pow(lam2 * (mu - b) / sigma, beta), &Pb, &Qb);
+        return wL * (Pa - Pb);
+    }
+    if (a >= mu) {
+        incgamma(sh, pow(lam1 * (a - mu) / sigma, beta), &Pa, &Qa);
+        incgamma(sh, pow(lam1 * (b - mu) / sigma, beta), &Pb, &Qb);
+        return wR * (Pb - Pa);
+    }
+    incgamma(sh, pow(lam2 * (mu - a) / sigma, beta), &Pa, &Qa);
+    incgamma(sh, pow(lam1 * (b - mu) / sigma, beta), &Pb, &Qb);
+    return wL * Pa + wR * Pb;
+}
+
+void wsgn_pdist(const double *x, const int *nx, const double *mu, const double *sigma,
+                const double *beta, const double *lam1, const double *lam2, double *out)
+{
+    double wL = *lam1 / (*lam1 + *lam2), wR = *lam2 / (*lam1 + *lam2), sh = 1.0 / *beta;
+    for (int i = 0; i < *nx; i++) {
+        double P, Q, d = x[i] - *mu;
+        if (d < 0.0) {
+            incgamma(sh, pow(*lam2 * (-d) / *sigma, *beta), &P, &Q);
+            out[i] = wL * Q;
+        } else {
+            incgamma(sh, pow(*lam1 * d / *sigma, *beta), &P, &Q);
+            out[i] = wL + wR * P;
+        }
+    }
+}
+
+/* wrapped distribution function on [0, 2*pi): the mass of the arcs [2 pi k, theta + 2 pi k],
+ * |k| <= K, so that it is exactly the integral of wsgn_wdensity with the same K; at theta = 2 pi it
+ * returns the mass the truncated wrapping sum captures, which is how the truncation is checked */
+static double wcdf1(double theta, double mu, double beta, double lam, int K)
+{
+    double sigma = sqrt(lam * (1.0 - lam)), s = 0.0;
+    for (int k = -K; k <= K; k++)
+        s += line_mass(2.0 * M_PI * k, theta + 2.0 * M_PI * k, mu, sigma, beta, lam, 1.0 - lam);
+    return s;
+}
+
+void wsgn_wcdf(const double *theta, const int *nt, const double *mu, const double *beta,
+               const double *lam, const int *K, double *out)
+{
+    for (int i = 0; i < *nt; i++) {
+        double t = theta[i];
+        if (t <= 0.0) out[i] = 0.0;
+        else out[i] = wcdf1(t < 2.0 * M_PI ? t : 2.0 * M_PI, *mu, *beta, *lam, *K);
+    }
+}
+
+/* wrapped quantile function on [0, 2*pi), by bisection on the monotone distribution function;
+ * 100 halvings take the bracket below the spacing of doubles near 2 pi */
+void wsgn_wquant(const double *p, const int *np, const double *mu, const double *beta,
+                 const double *lam, const int *K, double *out)
+{
+    for (int i = 0; i < *np; i++) {
+        double lo = 0.0, hi = 2.0 * M_PI;
+        if (p[i] <= 0.0) { out[i] = 0.0; continue; }
+        if (p[i] >= 1.0) { out[i] = 2.0 * M_PI; continue; }
+        for (int it = 0; it < 100; it++) {
+            double mid = 0.5 * (lo + hi);
+            if (mid <= lo || mid >= hi) break;
+            if (wcdf1(mid, *mu, *beta, *lam, *K) < p[i]) lo = mid; else hi = mid;
+        }
+        out[i] = 0.5 * (lo + hi);
+    }
+}
