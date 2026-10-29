@@ -1,0 +1,109 @@
+# wsgnstat
+
+The **skew generalised normal** distribution on the line and its
+**wrapping onto the circle**: density, distribution and quantile
+functions, random generation, characteristic function, trigonometric
+moments, and estimation by trigonometric moments or maximum likelihood.
+The characteristic function is reached through absolutely convergent
+integrals rather than a series, so every shape parameter is available.
+The computation runs on a pure-C back-end shared with the Python package
+of the same name.
+
+## Installation
+
+From CRAN, once accepted:
+
+``` r
+
+install.packages("wsgnstat")
+```
+
+The development version from GitHub:
+
+``` r
+
+# install.packages("remotes")
+remotes::install_github("mtloots/wsgnstat", subdir = "wsgnstat")
+```
+
+## Example
+
+Simulate from a skew member of the wrapped family, estimate its
+parameters, and compare with the truth:
+
+``` r
+
+library(wsgnstat)
+set.seed(1)
+truth <- c(mu = 1, beta = 1.5, lam = 0.3)
+theta <- rwsgn(1000, truth["mu"], truth["beta"], truth["lam"])
+fit <- fit_wsgn_mle(theta)
+round(rbind(truth = truth, estimate = fit$par), 3)
+#>          mu beta   lam
+#> truth     1 1.50 0.300
+#> estimate  1 1.48 0.315
+```
+
+At shape 2 with `lam = 0.5` the circular law is the wrapped normal with
+sigma = 1/sqrt(2), and its trigonometric moments are exactly
+exp(-p^2/4):
+
+``` r
+
+tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5)
+rbind(engine = tm$A, closed_form = exp(-(1:4)^2 / 4))
+#>                  [,1]      [,2]      [,3]       [,4]
+#> engine      0.7788008 0.3678794 0.1053992 0.01831564
+#> closed_form 0.7788008 0.3678794 0.1053992 0.01831564
+```
+
+The vignette,
+[`vignette("wsgnstat")`](https://mtloots.github.io/wsgnstat/articles/wsgnstat.md),
+walks through the family, its reductions, estimation and an application
+to wind directions.
+
+# Package index
+
+## All functions
+
+Every exported entry point. The computation runs on a shared pure-C
+back-end that is also bound from Python, and the two front ends are
+checked against each other value by value.
+
+- [`cfsgn()`](https://mtloots.github.io/wsgnstat/reference/cfsgn.md) :
+  Characteristic function of the skew generalised normal distribution (C
+  back-end)
+- [`dsgn()`](https://mtloots.github.io/wsgnstat/reference/dsgn.md) :
+  Density of the skew generalised normal distribution on the line (C
+  back-end)
+- [`dwsgn()`](https://mtloots.github.io/wsgnstat/reference/dwsgn.md) :
+  Density of the wrapped skew generalised normal distribution (C
+  back-end)
+- [`fit_wsgn_mle()`](https://mtloots.github.io/wsgnstat/reference/fit_wsgn_mle.md)
+  : Fit the wrapped skew generalised normal by maximum likelihood (C
+  back-end)
+- [`fit_wsgn_trig()`](https://mtloots.github.io/wsgnstat/reference/fit_wsgn_trig.md)
+  : Fit the wrapped skew generalised normal by trigonometric moments (C
+  back-end)
+- [`psgn()`](https://mtloots.github.io/wsgnstat/reference/psgn.md) :
+  Distribution function of the skew generalised normal distribution on
+  the line (C back-end)
+- [`pwsgn()`](https://mtloots.github.io/wsgnstat/reference/pwsgn.md)
+  [`qwsgn()`](https://mtloots.github.io/wsgnstat/reference/pwsgn.md) :
+  Distribution and quantile functions of the wrapped skew generalised
+  normal distribution
+- [`rsgn()`](https://mtloots.github.io/wsgnstat/reference/rsgn.md) :
+  Random generation from the (wrapped) skew generalised normal
+  distribution
+- [`rwsgn()`](https://mtloots.github.io/wsgnstat/reference/rwsgn.md) :
+  Random generation from the wrapped skew generalised normal
+  distribution
+- [`trig_moments()`](https://mtloots.github.io/wsgnstat/reference/trig_moments.md)
+  : Population trigonometric moments of the wrapped family (C back-end)
+
+# Articles
+
+### All vignettes
+
+- [wsgnstat: the wrapped skew generalised normal
+  distribution](https://mtloots.github.io/wsgnstat/articles/wsgnstat.md):
