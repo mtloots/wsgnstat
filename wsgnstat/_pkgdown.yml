@@ -4,9 +4,34 @@ template:
   bootstrap: 5
 
 reference:
-  - title: All functions
+  - title: The distribution on the line
     desc: >
-      Every exported entry point. The computation runs on a shared pure-C back-end that is also
-      bound from Python, and the two front ends are checked against each other value by value.
+      The two-piece exponential power distribution as a uniform scale mixture with generalised
+      gamma mixing.
     contents:
-      - matches(".*")
+      - dsgn
+      - psgn
+      - rsgn
+      - cfsgn
+  - title: The wrapped distribution
+    desc: >
+      Density, distribution and quantile functions, random generation and trigonometric moments of
+      the four-parameter wrapped distribution.
+    contents:
+      - dwsgn
+      - pwsgn
+      - rwsgn
+      - trig_moments
+  - title: Maximum likelihood
+    desc: >
+      The four-parameter fit with a shape floor, the grouped likelihood for rounded data, and the
+      profile likelihood in the shape. Every step runs in the shared C back-end.
+    contents:
+      - fit_wsgn
+      - profile_wsgn
+      - grouped_loglik
+      - wsgn_fit-methods
+  - title: The reciprocal-rate subfamily (version 0.1.0)
+    contents:
+      - fit_wsgn_mle
+      - fit_wsgn_trig

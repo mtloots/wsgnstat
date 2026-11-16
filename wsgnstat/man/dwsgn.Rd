@@ -2,44 +2,65 @@
 % Please edit documentation in R/wsgnstat.R
 \name{dwsgn}
 \alias{dwsgn}
-\title{Density of the wrapped skew generalised normal distribution (C back-end)}
+\title{Density of the wrapped two-piece exponential power distribution (C back-end)}
 \usage{
-dwsgn(theta, mu = 0, beta = 2, lam = 0.5, K = 50)
+dwsgn(theta, mu = 0, beta = 2, lam = 0.5, K = 50, sigma = NULL, log = FALSE)
 }
 \arguments{
-\item{theta}{numeric vector of angles in radians on \code{[0, 2*pi)}.}
+\item{theta}{numeric vector of angles in radians.}
 
-\item{mu}{location (junction) parameter; for a skew law this is not the mean direction.}
+\item{mu}{location parameter.}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
 \item{lam}{skewness parameter in (0, 1); \code{0.5} is symmetric.}
 
-\item{K}{truncation of the wrapping sum (\code{abs(k) <= K}). The default \code{50} captures the
-whole mass to double precision for \code{beta >= 0.8}; for very heavy tails (\code{beta} near
-\code{0.3}) it does not, and \code{pwsgn(2 * pi, mu, beta, lam, K)} reports the mass that the
-truncated sum captures, so \code{K} can be raised until that is one.}
+\item{K}{number of images summed directly on each side of \code{mu} before the
+Euler-Maclaurin tail (a positive integer); more are added directly when the formula is not
+yet accurate there, and fewer are used when the rest is negligible.}
+
+\item{sigma}{scale parameter (> 0); \code{NULL} gives the reciprocal-rate subfamily.}
+
+\item{log}{logical; return the log-density.}
 }
 \value{
-the wrapped probability density function evaluated at \code{theta}.
+the wrapped density (or its logarithm) evaluated at \code{theta}.
 }
 \description{
-The identified parameterisation is used: \code{lam1 = lam}, \code{lam2 = 1 - lam} and
-\code{sigma = sqrt(lam * (1 - lam))}, so the free parameters are the location \code{mu},
-the tail parameter \code{beta} and the skewness \code{lam}.
+The wrapped distribution is that of \code{X mod 2 pi}, with \code{X} the line distribution of
+\code{\link{dsgn}} with right rate \code{a = lam / sigma} and left rate
+\code{b = (1 - lam) / sigma}. Its four parameters are the location \code{mu}, the scale
+\code{sigma}, the skewness \code{lam} (\code{P(X < mu) = lam}) and the shape \code{beta}, and
+the four-parameter family is identifiable. When \code{sigma} is not given, the reciprocal-rate
+subfamily \code{a b = 1}, that is \code{sigma = sqrt(lam (1 - lam))}, is used, as in version
+0.1.0; it is a three-parameter restriction of the model, kept for backward compatibility.
+}
+\details{
+The density is the image sum \code{c sum_k [exp(-(a (t + 2 pi k))^beta) + exp(-(b (2 pi - t + 2
+pi k))^beta)]}, \code{t = (theta - mu) mod 2 pi}, with \code{c = lam (1 - lam) / (sigma Gamma(1 +
+1/beta))}. On each side of \code{mu} images are summed directly, and the remainder is added by
+the Euler-Maclaurin formula, with the exact incomplete-gamma integral and Bernoulli terms through
+\code{B_12}, as soon as it is accurate; it is tried after 8, 16, 32 and \code{K} images and after
+each further one, so the result does not depend on \code{K}. The tail is kept in log space, so
+very small shapes are covered (at \code{beta = 0.005} and \code{0.001} the density differs from
+\code{1/(2 pi)} by less than \code{1e-13} relative, the limit set by cancelling
+\code{lgamma(1/beta)}). Against 40-digit image sums at six angles, \code{lam = 0.3}, \code{sigma
+= 0.4} and \code{sqrt(0.21)}, and shapes 0.1, 0.2, 0.3, 0.5, 1 and 2 (the file
+\code{extdata/ref_dw.csv}), the relative error is below \code{1e-14}.
 }
 \examples{
-## a skew member drawn on the circle as a radial curve about the unit circle
+## a skew member with a cusp, drawn on the circle as a radial curve about the unit circle
 th <- seq(0, 2 * pi, length.out = 721)
-d <- dwsgn(th, mu = pi / 2, beta = 1.5, lam = 0.3)
-plot(cos(th), sin(th), type = "l", asp = 1, xlim = c(-2, 2), ylim = c(-2, 2),
+d <- dwsgn(th, mu = pi / 2, beta = 0.8, lam = 0.3, sigma = 0.4)
+plot(cos(th), sin(th), type = "l", asp = 1, xlim = c(-2.5, 2.5), ylim = c(-2.5, 2.5),
      xlab = "", ylab = "", lty = 3)
 lines((1 + d) * cos(th), (1 + d) * sin(th))
-## the density integrates to one over the circle
-sum(d[-1]) * (th[2] - th[1])
-## at beta = 2 with lam = 0.5 the circular law IS the wrapped normal
-## with sigma = 1/sqrt(2), which anchors the wrapping machinery exactly
+## the density integrates to one over the circle, also at a very small shape
+integrate(dwsgn, 0, 2 * pi, mu = 1, beta = 0.2, lam = 0.3, sigma = 0.4,
+          subdivisions = 1000)$value
+## at beta = 2 with lam = 0.5 the circular distribution is the wrapped normal
+## with standard deviation sqrt(2) sigma
 tt <- c(0.5, 2.0, 4.5)
-wn <- vapply(tt, function(t) sum(dnorm(t + 2 * pi * (-80:80), 0, 1 / sqrt(2))), 0)
-rbind(wsgnstat = dwsgn(tt, 0, 2, 0.5), wrapped_normal = wn)
+wn <- vapply(tt, function(t) sum(dnorm(t + 2 * pi * (-80:80), 0, sqrt(2) * 0.6)), 0)
+rbind(wsgnstat = dwsgn(tt, 0, 2, 0.5, sigma = 0.6), wrapped_normal = wn)
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/wsgnstat.R
 \name{fit_wsgn_trig}
 \alias{fit_wsgn_trig}
-\title{Fit the wrapped skew generalised normal by trigonometric moments (C back-end)}
+\title{Fit the reciprocal-rate subfamily by trigonometric moments}
 \usage{
 fit_wsgn_trig(theta, starts = NULL)
 }
@@ -16,12 +16,14 @@ a list with the estimate \code{par = c(mu, beta, lam)}, its standard errors \cod
   and the objective value \code{value}.
 }
 \description{
-Minimum-distance matching of the first two sample trigonometric moments to their population
-counterparts, evaluated in C through the integral characteristic function, hence available for
-every \code{beta > 0}. Standard errors come from the minimum-distance sandwich.
+Minimum-distance matching of the first two sample trigonometric moments to those of the
+three-parameter reciprocal-rate subfamily (\code{sigma = sqrt(lam (1 - lam))}), with standard
+errors from the minimum-distance sandwich. Kept from version 0.1.0 for backward compatibility.
+Matching trigonometric moments is useful as a diagnostic and for starting values, but it is not
+a reliable estimator for this family; \code{\link{fit_wsgn}} fits the full four-parameter
+distribution by maximum likelihood.
 }
 \examples{
-## simulate from a known member and recover it
 set.seed(11)
 truth <- c(mu = 1, beta = 1.5, lam = 0.3)
 th <- rwsgn(1000, truth["mu"], truth["beta"], truth["lam"])

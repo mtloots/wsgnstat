@@ -2,32 +2,33 @@
 % Please edit documentation in R/wsgnstat.R
 \name{rwsgn}
 \alias{rwsgn}
-\title{Random generation from the wrapped skew generalised normal distribution}
+\title{Random generation from the wrapped two-piece exponential power distribution}
 \usage{
-rwsgn(n, mu = 0, beta = 2, lam = 0.5)
+rwsgn(n, mu = 0, beta = 2, lam = 0.5, sigma = NULL)
 }
 \arguments{
 \item{n}{number of draws.}
 
-\item{mu}{location (junction) parameter; for a skew law this is not the mean direction.}
+\item{mu}{location parameter.}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
 \item{lam}{skewness parameter in (0, 1); \code{0.5} is symmetric.}
+
+\item{sigma}{scale parameter (> 0); \code{NULL} gives the reciprocal-rate subfamily.}
 }
 \value{
 a numeric vector of angles in \code{[0, 2 * pi)}.
 }
 \description{
-Draws from the circular law in the identified parameterisation of \code{\link{dwsgn}}, that is
-\code{rsgn(n, mu, sigma = sqrt(lam * (1 - lam)), beta, lam1 = lam, lam2 = 1 - lam, wrap = TRUE)}.
-The estimators \code{\link{fit_wsgn_trig}} and \code{\link{fit_wsgn_mle}} estimate exactly
-these \code{(mu, beta, lam)}.
+Draws from the wrapped distribution with the parameters of \code{\link{dwsgn}}, that is
+\code{rsgn(n, mu, sigma, beta, lam1 = lam, lam2 = 1 - lam, wrap = TRUE)}. When \code{sigma} is
+not given, the reciprocal-rate subfamily \code{sigma = sqrt(lam (1 - lam))} is used.
 }
 \examples{
 set.seed(3)
-th <- rwsgn(2000, mu = 1, beta = 1.5, lam = 0.3)
+th <- rwsgn(2000, mu = 1, beta = 0.9, lam = 0.3, sigma = 0.4)
 hist(th, breaks = seq(0, 2 * pi, length.out = 49), freq = FALSE, main = "",
      xlab = "angle (radians)")
-curve(dwsgn(x, mu = 1, beta = 1.5, lam = 0.3), 0, 2 * pi, add = TRUE)
+curve(dwsgn(x, mu = 1, beta = 0.9, lam = 0.3, sigma = 0.4), 0, 2 * pi, add = TRUE, n = 721)
 }

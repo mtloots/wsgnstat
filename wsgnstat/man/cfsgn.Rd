@@ -2,9 +2,18 @@
 % Please edit documentation in R/wsgnstat.R
 \name{cfsgn}
 \alias{cfsgn}
-\title{Characteristic function of the skew generalised normal distribution (C back-end)}
+\title{Characteristic function of the two-piece exponential power distribution (C back-end)}
 \usage{
-cfsgn(t, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5)
+cfsgn(
+  t,
+  mu = 0,
+  sigma = 1,
+  beta = 2,
+  lam1 = 0.5,
+  lam2 = 0.5,
+  tol = 1e-12,
+  method = c("quadrature", "series")
+)
 }
 \arguments{
 \item{t}{numeric vector of arguments.}
@@ -13,29 +22,67 @@ cfsgn(t, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5)
 
 \item{sigma}{scale parameter (> 0).}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
-\item{lam1}{right-hand rate parameter (> 0).}
+\item{lam1}{right-hand rate parameter (> 0); the right-hand rate is \code{lam1 / sigma}.}
 
-\item{lam2}{left-hand rate parameter (> 0).}
+\item{lam2}{left-hand rate parameter (> 0); the left-hand rate is \code{lam2 / sigma}.}
+
+\item{tol}{tolerance relative to the size of each half (see Accuracy), for the quadrature and for
+the estimated rounding error of a series: one finite number in (0, 1). Values below
+\code{1e-14}, beyond the rounding of the quadrature, are raised to \code{1e-14} with a warning.}
+
+\item{method}{\code{"quadrature"} (default) or \code{"series"}.}
 }
 \value{
 a complex vector of the same length as \code{t}.
 }
 \description{
-Evaluated through the absolutely convergent cosine and sine integrals underlying the Fox
-H-function representation, hence valid for every \code{beta > 0}.
+The characteristic function is
+\code{exp(i t mu) [w1 G(t sigma / lam1) + w2 Conj(G(t sigma / lam2))] / Gamma(1 + 1/beta)},
+with \code{w1 = lam2 / (lam1 + lam2) = P(X > mu)}, \code{w2 = 1 - w1} and
+\code{G(w) = int_0^Inf exp(i w u - u^beta) du}. The default method evaluates \code{G} on the
+ray \code{u = r exp(i phi)} in the upper half-plane, with \code{phi} half of
+\code{min(pi, pi / (2 beta))}, by the trapezoid rule in \code{log r}, halving the step until
+successive sums agree to \code{tol}; the rotation removes both the oscillation and the very long
+range that the integral has on the real axis for small shapes.
+}
+\details{
+\emph{Accuracy.} \code{tol} is relative to the size of each half, \code{G(w) / Gamma(1 +
+1/beta)}, which is of order \code{min(1, 1/|w|)}. The two halves cancel to leading order at large
+\code{|t|}, so the error of the characteristic function is absolute, of order \code{tol min(1,
+max(lam1, lam2) / (sigma |t|))} (in practice of order \code{tol}: about \code{1e-15} to \code{3e-15} for shapes up to about 3, a few times
+\code{1e-15} for shapes 5 to 20, and up to about \code{1e-14} for shapes up to 50, at the default
+\code{tol}); values much smaller
+than that carry no relative accuracy (for the normal member, for instance, beyond \code{t} of
+about 8 in standard-deviation units). Against 120-digit values of the convergent series at
+\code{t = 1, 2, 3}, \code{lam1 = 0.3}, \code{lam2 = 0.7}, \code{sigma = 0.4} and
+\code{sqrt(0.21)}, and shapes 0.1 to 3 (the file \code{extdata/ref_cf.csv}), the relative error
+is below \code{1e-14}.
+
+\emph{Series.} The method \code{"series"} sums the convergent series instead, as a check: the
+descending series for \code{beta < 1}, the ascending (Fox-Wright) series for \code{beta > 1},
+and \code{1 / (1 - i w)} at \code{beta = 1}. Its rounding error is estimated as
+\code{1e-15 sum_k |t_k| (1 + |log t_k| + |arg t_k|)} over the terms \code{t_k}, and a half is
+refused, with \code{NaN} and a warning, when that estimate exceeds \code{tol} relative to the
+half, when the series does not converge within 200000 terms, or when the sum breaks the bound
+\code{|G(w)| <= Gamma(1 + 1/beta)}. On scans of 400 arguments per shape for shapes 0.05 to 50 the
+accepted values agreed with the quadrature to about \code{tol} relative to each half (to within a
+factor 3 at \code{tol = 1e-8}); like the quadrature, the combined value is accurate only in
+absolute terms at large \code{|t|}. Many arguments are refused, more for shapes near one.
 }
 \examples{
-## reached through absolutely convergent integrals, so every beta > 0 is available,
-## including beta <= 1, where the Fox-Wright series does not converge for all t
-cfsgn(0, 0, 1, 2, 0.5, 0.5)
+## every shape is reachable: the value at zero is one, also for small shapes
+sapply(c(0.1, 0.2, 0.3, 0.5, 1, 2), function(b) Mod(cfsgn(0, 0, 0.4, b, 0.3, 0.7) - 1))
+## below shape one the descending series converges and agrees with the quadrature
+t <- c(1, 2, 3)
+cbind(quadrature = cfsgn(t, 0, 0.4, 0.3, 0.3, 0.7),
+      series = cfsgn(t, 0, 0.4, 0.3, 0.3, 0.7, method = "series"))
 ## the normal member: exp(-t^2 / 4) for N(0, 1/2)
-t <- c(0.5, 1.5, 3)
 rbind(engine = Re(cfsgn(t, 0, 0.5, 2, 0.5, 0.5)), closed_form = exp(-t^2 / 4))
-## a skew member with beta = 0.8, against the Fourier transform of the density
-x <- seq(-60, 60, length.out = 120001)
-f <- dsgn(x, 0, 1, 0.8, 0.8, 0.3)
-c(engine = cfsgn(1.1, 0, 1, 0.8, 0.8, 0.3),
-  quadrature = sum(exp(1i * 1.1 * x) * f) * (x[2] - x[1]))
+## the asymmetric Laplace member (beta = 1) in closed form
+a <- 0.3 / 0.4
+b <- 0.7 / 0.4
+rbind(engine = cfsgn(t, 0, 0.4, 1, 0.3, 0.7),
+      closed_form = a * b / ((a - 1i * t) * (b + 1i * t)))
 }

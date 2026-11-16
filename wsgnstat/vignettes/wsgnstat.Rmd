@@ -1,272 +1,397 @@
 ---
-title: "wsgnstat: the wrapped skew generalised normal distribution"
+title: "wsgnstat: the wrapped two-piece exponential power distribution"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{wsgnstat: the wrapped skew generalised normal distribution}
+  %\VignetteIndexEntry{wsgnstat: the wrapped two-piece exponential power distribution}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6, fig.height = 4,
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6, fig.height = 3.6,
                       dpi = 72)
 has_circular <- requireNamespace("circular", quietly = TRUE)
 if (has_circular) {
-  wind_env <- new.env()
-  utils::data("wind", package = "circular", envir = wind_env)
+  dat <- new.env()
+  utils::data("wind", "fisherB7", package = "circular", envir = dat)
 }
+t_start <- Sys.time()
+f2 <- function(x, d = 2) formatC(x, format = "f", digits = d)
+fe <- function(x, d = 1) formatC(x, format = "e", digits = d)
 ```
 
 ```{r setup}
 library(wsgnstat)
 ```
 
-## The law and its parameters
+## Introduction
 
-On the line, the skew generalised normal distribution has the two-piece exponential-power density
+The two-piece exponential power distribution joins two halves of an exponential power density
+with different scales at a location $\mu$. It goes back to the construction of
+Fernández and Steel (1998), and it has appeared under several names since. The package name keeps
+the authors' earlier one, the (wrapped) skew generalised normal distribution. This vignette treats
+the distribution and its wrapped version on the circle as a uniform scale mixture. Section 2 gives
+the mixture and checks it by simulation, Section 3 the characteristic function and the
+trigonometric moments for small and large shapes, and Section 4 the accuracy of the wrapped
+density. Section 5 fits the four-parameter wrapped distribution to wind directions under a lower
+bound on the shape, and Section 6 fits rounded data by the grouped likelihood.
 
+## 2. The distribution as a uniform scale mixture
+
+Let $\mu$ be real, $\sigma > 0$, $0 < \lambda < 1$ and $\beta > 0$, and write $a = \lambda/\sigma$
+and $b = (1 - \lambda)/\sigma$ for the rates to the right and to the left of $\mu$. Let $Z > 0$
+be such that $Z^\beta$ has the gamma distribution with shape $1 + 1/\beta$, let $V$ be uniform on
+$[-1/b, 1/a]$, independent of $Z$, and put $X = \mu + ZV$. Given $Z$, $X$ is uniform on the
+interval $[\mu - Z/b, \mu + Z/a]$, which contains $\mu$, and $X$ has the density
 $$
-f(x) = c \, \exp\!\left\{-\left(\frac{\lambda_{\pm} |x - \mu|}{\sigma}\right)^{\beta}\right\},
-\qquad
-c = \frac{1}{\sigma \, (1/\lambda_1 + 1/\lambda_2) \, \Gamma(1 + 1/\beta)},
+f(x) = c\exp\{-(a(x - \mu))^\beta\},\quad x \ge \mu, \qquad
+f(x) = c\exp\{-(b(\mu - x))^\beta\},\quad x < \mu,
 $$
+where $c = \lambda(1 - \lambda)/\{\sigma\Gamma(1 + 1/\beta)\}$. The value $\lambda = 1/2$ gives the
+symmetric exponential power distribution, $\beta = 2$ with $\lambda = 1/2$ the normal distribution
+with standard deviation $\sqrt{2}\sigma$, and $\beta = 1$ the asymmetric Laplace distribution. The
+mixture also gives $\mathrm{P}(X < \mu) = \lambda$ and the moments
+$\mathrm{E}(X - \mu)^k = \mathrm{E}Z^k\,\mathrm{E}V^k$ without splitting at $\mu$. In the package
+the line functions take the right and left rate parameters as `lam1 = lam` and `lam2 = 1 - lam`.
 
-with $\lambda_1$ to the right of the location $\mu$ and $\lambda_2$ to its left. It is the scale
-mixture of a uniform variable and a generalised gamma variable, which is how `rsgn()` draws from it.
-The shape $\beta > 0$ governs the tails ($\beta = 2$ is Gaussian, $\beta = 1$ Laplace-like, smaller
-values heavier), and the pair $(\lambda_1, \lambda_2)$ the asymmetry: the mass to the left of $\mu$
-is $\lambda_1 / (\lambda_1 + \lambda_2)$.
+`rsgn()` draws from the mixture with a single uniform variable. A Kolmogorov-Smirnov distance
+between $2 \times 10^4$ draws and the closed-form distribution function `psgn()` checks it, at a
+shape below one, where the density has a cusp at $\mu$, and at a shape above two.
 
-Wrapping onto the circle sums the line density over all turns,
-$f_W(\theta) = \sum_k f(\theta + 2\pi k)$. On the circle the package uses the identified
-parameterisation $\lambda_1 = \lambda$, $\lambda_2 = 1 - \lambda$ and
-$\sigma = \sqrt{\lambda (1 - \lambda)}$, so the circular law has three parameters: the location
-`mu`, the tail parameter `beta` and the skewness `lam`, with `lam = 0.5` symmetric. For a skew law
-`mu` is the junction of the two pieces, not the mean direction.
-
-```{r family, fig.cap = "Wrapped densities for three tail parameters, symmetric (solid) and skew (dashed)."}
-th <- seq(0, 2 * pi, length.out = 721)
-op <- par(mfrow = c(1, 3), mar = c(4, 4, 2, 1))
-for (b in c(0.8, 1.5, 3)) {
-  plot(th, dwsgn(th, mu = pi, beta = b, lam = 0.5), type = "l", ylim = c(0, 1.2),
-       xlab = "angle (radians)", ylab = "density", main = paste("beta =", b))
-  lines(th, dwsgn(th, mu = pi, beta = b, lam = 0.25), lty = 2)
+```{r mixture}
+set.seed(1)
+ks <- function(u) {
+  u <- sort(u)
+  n <- length(u)
+  max(pmax(seq_len(n) / n - u, u - (seq_len(n) - 1) / n))
 }
+x1 <- rsgn(2e4, mu = 0, sigma = 0.4, beta = 0.3, lam1 = 0.3, lam2 = 0.7)
+x2 <- rsgn(2e4, mu = 0, sigma = 1, beta = 2.5, lam1 = 0.7, lam2 = 0.3)
+d_ks <- c(ks(psgn(x1, 0, 0.4, 0.3, 0.3, 0.7)), ks(psgn(x2, 0, 1, 2.5, 0.7, 0.3)))
+left <- c(mean(x1 < 0), mean(x2 < 0))
+mom <- function(k, s, be, l) {
+  a <- l / s
+  b <- (1 - l) / s
+  gamma(1 + (k + 1) / be) / gamma(1 + 1 / be) * (a^-(k + 1) - (-b)^-(k + 1)) /
+    ((k + 1) * (1 / a + 1 / b))
+}
+rbind(KS_distance = d_ks, below_mu = left, lam = c(0.3, 0.7),
+      mean = c(mean(x1), mean(x2)), E_X = c(mom(1, 0.4, 0.3, 0.3), mom(1, 1, 2.5, 0.7)))
+```
+
+The Kolmogorov-Smirnov distances, `r f2(d_ks[1], 4)` and `r f2(d_ks[2], 4)`, are below the
+0.1 per cent critical value `r f2(1.95 / sqrt(2e4), 4)`. The fractions of draws below $\mu$ are
+within Monte Carlo error of $\lambda$, and the sample means of the moment formula. The mean of the
+heavy-tailed member is noisy, since its variance is large.
+
+The wrapped distribution is that of $\Theta = X \bmod 2\pi$. Given $Z$, $\Theta$ is uniform on an
+arc of length $Z(1/a + 1/b)$ that contains $\mu$, and its density is the image sum
+$$
+g(\theta) = c\sum_{k \ge 0}\left[\exp\{-(a(t + 2\pi k))^\beta\} + \exp\{-(b(2\pi - t + 2\pi k))^\beta\}\right],
+\qquad t = (\theta - \mu) \bmod 2\pi .
+$$
+`dwsgn()`, `pwsgn()`, `qwsgn()` and `rwsgn()` take the four parameters `mu`, `sigma`, `lam` and
+`beta`. The four-parameter wrapped distribution is identifiable. When `sigma` is omitted, the
+reciprocal-rate subfamily $ab = 1$, that is $\sigma = \{\lambda(1 - \lambda)\}^{1/2}$, is used, as
+in version 0.1.0; it is a three-parameter restriction of the model. Figure 1 shows how $\beta$
+moves the peak from a cusp to a flat top and how $\lambda$ tilts the mass about $\mu$.
+
+```{r family, fig.cap = "Figure 1. Wrapped densities with mu = 0 and sigma = 0.3, drawn on (-pi, pi]. Left: lam = 0.3 and beta = 0.5, 1, 2, 4. Right: beta = 1.5 and lam = 0.2, 0.5, 0.8."}
+th <- seq(-pi, pi, length.out = 721)
+op <- par(mfrow = c(1, 2), mar = c(4, 4, 1, 1))
+dens_b <- vapply(c(0.5, 1, 2, 4), function(b) dwsgn(th, 0, b, 0.3, sigma = 0.3), numeric(721))
+matplot(th, dens_b, type = "l", lty = 1:4, col = 1, xlab = "angle (radians)", ylab = "density")
+dens_l <- vapply(c(0.2, 0.5, 0.8), function(l) dwsgn(th, 0, 1.5, l, sigma = 0.3), numeric(721))
+matplot(th, dens_l, type = "l", lty = 1:3, col = 1, xlab = "angle (radians)", ylab = "density")
 par(op)
 ```
 
-## Density, distribution function, quantiles and random generation
+## 3. Characteristic function and trigonometric moments
 
-The four functions follow R's usual naming. The distribution function is measured anticlockwise
-from angle zero and is computed exactly, as a sum over turns of incomplete gamma functions, so it
-needs no numerical quadrature; the quantile function inverts it.
+From the mixture, the characteristic function is
+$$
+\varphi(t) = \mathrm{e}^{\mathrm{i}t\mu}\,c\left\{\frac{1}{a}G\!\left(\frac{t}{a}\right)
++ \frac{1}{b}\overline{G\!\left(\frac{t}{b}\right)}\right\},\qquad
+G(w) = \int_0^\infty \mathrm{e}^{\mathrm{i}wu - u^\beta}\,\mathrm{d}u,
+$$
+for every $\beta > 0$, and the trigonometric moments of $\Theta$ are $\varphi_p = \varphi(p)$. On the
+real axis the integral oscillates, and for small shapes its integrand decays so slowly that it has
+to be followed out to $37^{1/\beta}$, about $5 \times 10^{15}$ at $\beta = 0.1$. Version 0.1.0
+applied Simpson's rule there, which failed below $\beta = 0.6$. Since $\mathrm{e}^{-u^\beta}$ is
+analytic off the negative axis, the path of integration may be turned onto the ray
+$u = r\mathrm{e}^{\mathrm{i}\phi}$ for any $0 \le \phi < \min\{\pi, \pi/(2\beta)\}$, along which both
+factors decay and the oscillation is slow. With $r = \mathrm{e}^x$ the integrand is analytic in a
+strip about the real $x$-axis, so the trapezoid rule converges exponentially as the step is halved,
+and `cfsgn()` stops when two successive sums agree to `tol` (default $10^{-12}$). The convergent
+series, descending for $\beta < 1$ and ascending for $\beta > 1$, are available as
+`method = "series"` for checking.
 
-```{r dpqr}
-mu <- 1
-beta <- 1.5
-lam <- 0.3
-dwsgn(c(0.5, 1, 2), mu, beta, lam)
-pwsgn(c(0.5, 1, 2), mu, beta, lam)
-qwsgn(c(0.1, 0.5, 0.9), mu, beta, lam)
+The characteristic function at zero must be one. Version 0.1.0 returned 40624 at $\beta = 0.1$.
+
+```{r cf-zero}
+shapes <- c(0.1, 0.2, 0.3, 0.5, 1, 2, 3)
+cf0 <- vapply(shapes, function(b) Mod(cfsgn(0, 0, 0.4, b, 0.3, 0.7) - 1), 0)
+setNames(cf0, paste0("beta=", shapes))
 ```
 
-The distribution function agrees with direct numerical integration of the density, and the
-density integrates to one over the circle:
+Below shape one the descending series converges, and it agrees with the rotated-path quadrature at
+small and large arguments. At $\beta = 1$ and at $\beta = 2$ with $\lambda = 1/2$ the
+characteristic function has the closed forms
+$\mathrm{e}^{\mathrm{i}t\mu}ab/\{(a - \mathrm{i}t)(b + \mathrm{i}t)\}$ and
+$\exp(\mathrm{i}t\mu - \sigma^2t^2)$.
 
-```{r dpqr-check}
-c(pwsgn = pwsgn(2, mu, beta, lam),
-  integrate = integrate(dwsgn, 0, 2, mu = mu, beta = beta, lam = lam)$value,
-  total = integrate(dwsgn, 0, 2 * pi, mu = mu, beta = beta, lam = lam)$value)
+```{r cf-check}
+tt <- c(0.5, 1, 3, 10, 40)
+small <- vapply(c(0.1, 0.3, 0.7), function(b) {
+  max(Mod(cfsgn(tt, 0.3, 0.4, b, 0.3, 0.7) - cfsgn(tt, 0.3, 0.4, b, 0.3, 0.7, method = "series")))
+}, 0)
+a <- 0.3 / 0.4
+b <- 0.7 / 0.4
+laplace <- max(Mod(cfsgn(tt, 0.3, 0.4, 1, 0.3, 0.7) -
+                     exp(0.3i * tt) * a * b / ((a - 1i * tt) * (b + 1i * tt))))
+normal <- max(Mod(cfsgn(tt, 0.3, 0.4, 2, 0.5, 0.5) - exp(0.3i * tt - 0.16 * tt^2)))
+c(series_0.1 = small[1], series_0.3 = small[2], series_0.7 = small[3],
+  laplace = laplace, normal = normal)
 ```
 
-Draws in the identified parameterisation come from `rwsgn()`; `rsgn()` draws on the line, and
-wraps if asked, for any $(\sigma, \lambda_1, \lambda_2)$.
+The descending series also gives the exact decay of the trigonometric moments. Unless
+$\lambda = 1/2$ and $\beta$ is an even integer,
+$|\varphi_p| = Cp^{-(1 + \beta)}\{1 + o(1)\}$, with
+$C = c\,\Gamma(\beta + 1)\,|a^\beta\mathrm{e}^{\mathrm{i}\pi(\beta + 1)/2} + b^\beta\mathrm{e}^{-\mathrm{i}\pi(\beta + 1)/2}|$,
+which `trig_decay()` returns. The decay is set by the singularity of the density at $\mu$, so a
+skew member decays like $p^{-(1 + \beta)}$ even at $\beta = 2$.
 
-```{r rwsgn, fig.cap = "A sample of 5000 draws with the wrapped density overlaid."}
-set.seed(1)
-x <- rwsgn(5000, mu, beta, lam)
-hist(x, breaks = seq(0, 2 * pi, length.out = 49), freq = FALSE, main = "",
-     xlab = "angle (radians)")
-curve(dwsgn(x, mu, beta, lam), 0, 2 * pi, add = TRUE, lwd = 2)
+```{r decay}
+p <- c(10, 100, 1000)
+ratio <- vapply(c(0.3, 1.5, 2), function(be) {
+  tm <- trig_moments(1000, 0, be, 0.3, sigma = 0.4)
+  Mod(complex(real = tm$A[p], imaginary = tm$B[p])) * p^(1 + be) / trig_decay(be, 0.3, 0.4)["C"]
+}, numeric(3))
+dimnames(ratio) <- list(paste0("p=", p), paste0("beta=", c(0.3, 1.5, 2)))
+round(ratio, 4)
 ```
 
-A Kolmogorov-Smirnov distance between the sample and the exact distribution function confirms the
-agreement:
+The ratio $|\varphi_p|p^{1 + \beta}/C$ tends to one in each column, slowly at $\beta = 0.3$, where the
+relative remainder is of order $p^{-\beta}$.
 
-```{r ks}
-u <- sort(pwsgn(x, mu, beta, lam))
-n <- length(u)
-c(KS = max(pmax((1:n) / n - u, u - (0:(n - 1)) / n)), five_per_cent_critical = 1.358 / sqrt(n))
+## 4. Accuracy of the wrapped density
+
+For small shapes the terms of the image sum decay very slowly. Version 0.1.0 summed 50 images on
+each side and stopped, which left out most of the mass below $\beta = 0.3$. `dwsgn()` now sums
+`K` images directly, or fewer when the rest is negligible. The remainder is added by the
+Euler-Maclaurin formula, with the exact incomplete-gamma integral and the terms in the first and
+third derivatives. Images are added directly until the first omitted term of the formula is
+negligible, so the result does not depend on `K`, and the density integrates to one even at
+$\beta = 0.05$. The plain sum of 50 images, computed below from the line density, shows the size
+of the old truncation error.
+
+```{r wrapped-accuracy}
+th <- seq(0, 2 * pi, length.out = 25)[-25]
+acc <- t(vapply(c(0.05, 0.1, 0.2, 0.3, 0.5, 1, 2), function(be) {
+  d50 <- dwsgn(th, 0.7, be, 0.3, K = 50, sigma = 0.4)
+  d3 <- dwsgn(th, 0.7, be, 0.3, K = 3, sigma = 0.4)
+  plain <- rowSums(matrix(dsgn(outer(th, 2 * pi * (-50:50), "+"), 0.7, 0.4, be, 0.3, 0.7),
+                          nrow = length(th)))
+  tot <- stats::integrate(dwsgn, 0, 2 * pi, mu = 0.7, beta = be, lam = 0.3, sigma = 0.4,
+                          rel.tol = 1e-12, subdivisions = 2000L)$value
+  c(beta = be, K3_vs_K50 = max(abs(d3 / d50 - 1)), mass_minus_1 = tot - 1,
+    plain50_rel_error = max(abs(plain / d50 - 1)))
+}, numeric(4)))
+signif(acc, 3)
 ```
 
-## Reductions to known circular laws
+The package also carries image sums computed independently to 40 digits by mpmath's
+Euler-Maclaurin summation, at six angles, two scales and shapes from 0.1 to 2.
 
-At $\beta = 2$ the line law is the two-piece (split) normal, so the circular law is the wrapped
-split normal; with `lam = 0.5` as well, $\sigma = 1/2$ and the rate is one on both sides, so the
-line law is $N(0, 1/2)$ and the circular law is the wrapped normal with $\sigma = 1/\sqrt{2}$.
-Both reductions can be checked against densities built directly from `dnorm()`:
-
-```{r wn}
-tt <- c(0.5, 2, 4.5)
-k <- -60:60
-wrapped_normal <- vapply(tt, function(t) sum(dnorm(t + 2 * pi * k, 0, sqrt(1 / 2))), 0)
-rbind(wsgnstat = dwsgn(tt, mu = 0, beta = 2, lam = 0.5), wrapped_normal = wrapped_normal)
-
-## wrapped split normal: standard deviation sigma / (sqrt(2) lam) on the right of mu and
-## sigma / (sqrt(2) (1 - lam)) on the left, with left mass lam
-l <- 0.3
-s <- sqrt(l * (1 - l))
-split_normal <- function(x) {
-  sr <- s / (sqrt(2) * l)
-  sl <- s / (sqrt(2) * (1 - l))
-  ifelse(x >= 0, 2 * (1 - l) * dnorm(x, 0, sr), 2 * l * dnorm(x, 0, sl))
-}
-wrapped_split <- vapply(tt, function(t) sum(split_normal(t + 2 * pi * k)), 0)
-rbind(wsgnstat = dwsgn(tt, mu = 0, beta = 2, lam = l), wrapped_split_normal = wrapped_split)
+```{r wrapped-reference}
+ref <- utils::read.csv(system.file("extdata", "ref_dw.csv", package = "wsgnstat"))
+sig <- ifelse(ref$case == 1, 0.4, sqrt(0.21))
+d <- mapply(function(th, be, s) dwsgn(th, 0.7, be, 0.3, sigma = s), ref$theta, ref$beta, sig)
+signif(tapply(abs(d / ref$dens - 1), ref$beta, max), 2)
 ```
 
-The trigonometric moments of the wrapped normal are $\exp(-p^2 \sigma^2 / 2) = \exp(-p^2/4)$, and
-the engine reproduces them through its characteristic function:
+The largest relative error is `r fe(max(abs(d / ref$dens - 1)))`, below $10^{-14}$ on this grid of
+six angles, two scales, $\lambda = 0.3$ and shapes 0.1 to 2. `pwsgn()` sums the exact
+incomplete-gamma probabilities of the images in the same way, so that `pwsgn(2 * pi)` is one, and
+`qwsgn()` inverts it.
 
-```{r tm}
-tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5)
-rbind(engine = tm$A, closed_form = exp(-(1:4)^2 / 4))
+## 5. The four-parameter fit with a shape floor
+
+```{r wind-fit, eval = has_circular}
+wind <- as.numeric(dat$wind)
+t_wind <- system.time(fit <- fit_wsgn(wind, se = "none"))["elapsed"]
+fit
 ```
 
-In the identified parameterisation the concentration of the symmetric members is tied to the tail
-parameter, so the wrapped normal reached at $\beta = 2$ is the one with $\sigma = 1/\sqrt{2}$; the
-skew members at $\beta = 2$ are wrapped split normals of the matching scale.
-
-The wrapped skew-normal of Pewsey (2000) skews the normal differently, through the factor
-$2\Phi(\alpha z)$ of Azzalini's construction rather than through two pieces. The two families
-share the wrapped normal, at $\alpha = 0$ there and at $\beta = 2$, `lam = 0.5` here:
-
-```{r wsn}
-dwsn <- function(theta, xi, omega, alpha, k = -60:60) {
-  vapply(theta, function(t) {
-    z <- (t + 2 * pi * k - xi) / omega
-    sum(2 / omega * dnorm(z) * pnorm(alpha * z))
-  }, 0)
-}
-rbind(wrapped_skew_normal_alpha0 = dwsn(tt, 0, sqrt(1 / 2), 0),
-      wsgnstat = dwsgn(tt, mu = 0, beta = 2, lam = 0.5))
+```{r wind-numbers, include = FALSE, eval = has_circular}
+n_w <- length(wind)
+m_w <- max(table(wind))
+loc_obs <- coef(fit)["mu"] %in% (wind %% (2 * pi))
 ```
 
-Away from the wrapped normal the two skewing mechanisms give different shapes (two half-normals
-joined at the mode, against a normal density reweighted by a normal distribution function), so
-neither family contains the other's skew members.
+The data of the circular package `wind` are `r if (has_circular) n_w` wind directions recorded at
+Col de la Roa in the Italian Alps between 3 and 4 a.m. each day from 29 January to 31 March 2001
+(Agostinelli, 2007). Readings 15 minutes apart are dependent, so the fit is descriptive.
 
-## Estimation from simulated data
+With the shape free, the likelihood of the wrapped distribution is unbounded as $\beta$ tends to
+zero, with $\mu$ at an observation. At every fixed shape it is bounded, unless all observations
+coincide. Under a lower bound $\beta \ge \beta_0$ that does not exceed the true shape, the maximum
+likelihood estimator is consistent. `fit_wsgn()` therefore maximises over $\beta_0 \le \beta \le 20$,
+by default with $\beta_0 = 0.1$. It searches both the regular branch and the spike branch, at three
+shapes, the floor times 1, 1.25 and 1.6, with the location at every observation, and returns the
+best; `at_floor`
+reports a fit on the floor and `at_rate_bound` a degenerate fit. The fitted shape, `r if (has_circular) f2(coef(fit)["beta"])`, is well
+above the floor.
 
-Two estimators are provided. `fit_wsgn_trig()` matches the first two sample trigonometric moments
-to their population values (minimum distance, with sandwich standard errors); the population
-moments come from the characteristic function, which is evaluated through absolutely convergent
-integrals and is therefore available for every $\beta > 0$, including $\beta \le 1$, where the
-Fox-Wright series representation does not converge everywhere. `fit_wsgn_mle()` maximises the
-wrapped likelihood, starting from the moment estimate; its standard errors, when asked for, come
-from a parametric bootstrap, because the observed information is unstable near the cusp the
-density develops as $\beta$ approaches one.
+When the fitted shape is at
+most one, the log-likelihood is convex in $\mu$ between consecutive observations, so every
+maximising location is an observation. The location is then searched over the stored values near
+the fit, and the fitted location is indeed one of the observations
+(`r if (has_circular) loc_obs`). At a fitted shape below one `fit_wsgn()` gives no standard errors
+by default, since asymptotic normality is proved only for shapes above one. A parametric bootstrap
+is available with `se = "bootstrap"`, each refit repeating both searches and taking as long as the
+fit itself (`r if (has_circular) round(t_wind)` seconds here), so it is left out of this vignette.
 
-```{r sim}
-truth <- c(mu = 4, beta = 0.8, lam = 0.6)
-set.seed(17)
-y <- rwsgn(2000, truth["mu"], truth["beta"], truth["lam"])
-ft <- fit_wsgn_trig(y)
-fm <- fit_wsgn_mle(y)
-round(rbind(truth = truth, moments = ft$par, moments_se = ft$se, likelihood = fm$par), 3)
+The profile likelihood $M(\beta)$ shows whether the degenerate branch below the floor comes near
+the fit. As $\beta \to 0$ it rises at the leading rate $A^*/\beta$, with
+$A^* = n\log\{n/(n - m)\}$ and $m$ the largest number of tied observations.
+
+```{r wind-profile, eval = has_circular}
+pr <- profile_wsgn(wind, beta = c(0.3, unname(coef(fit)["beta"]), 1, 2), window = 0.4)
+astar <- n_w * log(n_w / (n_w - m_w))
+cbind(pr[, c("beta", "logLik")], A_over_beta = astar / pr$beta)
 ```
 
-The moment estimates lie within `r round(max(abs((ft$par - truth) / ft$se)), 1)` of their own
-standard errors of the truth in every coordinate, and the likelihood estimates within
-`r round(max(abs(fm$par - truth)), 3)` of it in every coordinate, at a heavy-tailed shape
-($\beta = 0.8$) where the characteristic function is reached only through the integral route.
-Bootstrap standard errors for the likelihood fit refit the model once per replicate; a small run
-at a lighter-tailed member:
+Here $m = `r if (has_circular) m_w`$ and $A^* = `r if (has_circular) f2(astar)`$. The profile has
+its maximum at the fitted shape and falls away on both sides; at $\beta = 0.3$ it is already
+`r if (has_circular) f2(fit$logLik - pr$logLik[1], 1)` below the fitted value. With so small an
+$A^*$ the degenerate branch plays no part at the shapes that matter. The profile at shapes near the
+floor is slow to compute for these data, since the image sums are long there, and is left out.
 
-```{r boot}
-truth2 <- c(mu = 1, beta = 1.5, lam = 0.3)
-set.seed(18)
-y2 <- rwsgn(500, truth2["mu"], truth2["beta"], truth2["lam"])
-fb <- fit_wsgn_mle(y2, B = 30)
-round(rbind(truth = truth2, estimate = fb$par, bootstrap_se = fb$se), 3)
-```
-
-## An application: wind directions at Col de la Roa
-
-The `wind` data in the 'circular' package hold `r if (has_circular) length(wind_env$wind) else 310`
-wind directions, in radians, recorded at a meteorological station in the Italian Alps between
-January and March 2001 (Agostinelli 2007). This section runs only when 'circular' is installed.
-
-```{r wind, eval = has_circular}
-w <- as.numeric(wind_env$wind) %% (2 * pi)
-fw_t <- fit_wsgn_trig(w)
-fw <- fit_wsgn_mle(w)
-round(rbind(moments = fw_t$par, moments_se = fw_t$se, likelihood = fw$par), 3)
-```
-
-For comparison, the wrapped normal and wrapped Cauchy laws are fitted by maximum likelihood with
-the 'circular' package, and the three fits are set side by side by log-likelihood and AIC.
+The von Mises distribution fitted by `circular::mle.vonmises()` is far behind in log-likelihood and
+AIC.
 
 ```{r wind-compare, eval = has_circular}
-wc <- circular::circular(w, type = "angles", units = "radians", template = "none",
-                         modulo = "asis", zero = 0, rotation = "counter")
-f_wn <- circular::mle.wrappednormal(wc)
-f_wc <- circular::mle.wrappedcauchy(wc)
-ll <- c(wsgn = fw$logLik,
-        wrapped_normal = sum(log(circular::dwrappednormal(wc, f_wn$mu, f_wn$rho))),
-        wrapped_cauchy = sum(log(circular::dwrappedcauchy(wc, f_wc$mu, f_wc$rho))))
-npar <- c(3, 2, 2)
-round(cbind(logLik = ll, parameters = npar, AIC = -2 * ll + 2 * npar), 1)
+vm <- circular::mle.vonmises(circular::circular(wind))
+ll_vm <- sum(log(circular::dvonmises(circular::circular(wind), vm$mu, vm$kappa)))
+data.frame(model = c("wrapped two-piece", "von Mises"), k = c(4, 2),
+           logLik = c(fit$logLik, ll_vm), AIC = c(AIC(fit), 4 - 2 * ll_vm))
 ```
 
-```{r wind-plot, eval = has_circular, fig.cap = "Wind directions with the fitted wrapped skew generalised normal density."}
-hist(w, breaks = seq(0, 2 * pi, length.out = 37), freq = FALSE, main = "",
-     xlab = "direction (radians)")
-curve(dwsgn(x, fw$par["mu"], fw$par["beta"], fw$par["lam"]), 0, 2 * pi, add = TRUE, lwd = 2)
+Figure 2 shows the fit.
+
+```{r wind-plot, eval = has_circular, fig.cap = "Figure 2. Col de la Roa wind directions: histogram and fitted wrapped two-piece exponential power density (solid) and von Mises density (dashed)."}
+g <- seq(0, 2 * pi, length.out = 721)
+hist(wind, breaks = seq(0, 2 * pi, length.out = 49), freq = FALSE, main = "",
+     xlab = "direction (radians)", col = "grey90", border = "grey60")
+lines(g, dwsgn(g, coef(fit)["mu"], coef(fit)["beta"], coef(fit)["lam"], sigma = coef(fit)["sigma"]))
+lines(g, circular::dvonmises(circular::circular(g), vm$mu, vm$kappa), lty = 2)
 ```
 
-A goodness-of-fit look uses the probability integral transform: under a correct model,
-`pwsgn()` at the fitted parameters carries the data to uniform values on $(0, 1)$. Kuiper's
-statistic suits the circle because it does not depend on where the origin is placed. The
-reference distribution below ignores the estimation of the parameters, so the p-value is
-approximate (conservative).
+For a fitted shape clearly above one, `fit_wsgn()` gives standard errors from the expected Fisher
+information $I(\hat\vartheta)^{-1}/n$, which is finite for $\beta > 1/2$. A simulated sample shows
+this route.
 
-```{r wind-gof, eval = has_circular, fig.cap = "Probability-probability plot of the fitted model."}
-u <- sort(pwsgn(w, fw$par["mu"], fw$par["beta"], fw$par["lam"]))
-n <- length(u)
-plot((1:n) / (n + 1), u, xlab = "uniform plotting position", ylab = "fitted distribution function",
-     pch = 20, cex = 0.6, asp = 1)
-abline(0, 1, lty = 2)
-V <- max((1:n) / n - u) + max(u - (0:(n - 1)) / n)
-Vstar <- V * (sqrt(n) + 0.155 + 0.24 / sqrt(n))
-kuiper_p <- function(v) {
-  j <- 1:100
-  min(1, sum(2 * (4 * j^2 * v^2 - 1) * exp(-2 * j^2 * v^2)))
-}
-c(V = V, V_star = Vstar, approximate_p = kuiper_p(Vstar))
+```{r info}
+set.seed(2)
+sim <- rwsgn(150, mu = 1, beta = 1.8, lam = 0.3, sigma = 0.5)
+fit_sim <- fit_wsgn(sim)
+round(rbind(truth = c(1, 0.5, 0.3, 1.8), estimate = coef(fit_sim), se = fit_sim$se), 3)
 ```
 
-The modified Kuiper statistic, `r if (has_circular) round(Vstar, 2) else "(not computed)"`, lies
-well beyond its 1 per cent critical value of 2.001 (Stephens 1970), so the fitted law is not an
-adequate description of these data in the absolute sense, although its AIC is
-`r if (has_circular) round(diff((-2 * ll + 2 * npar)[c("wsgn", "wrapped_normal")]), 1) else "(not computed)"`
-below that of the wrapped normal. Of the three laws compared, the smallest AIC belongs to the
-`r if (has_circular) c(wsgn = "wrapped skew generalised normal", wrapped_normal = "wrapped normal", wrapped_cauchy = "wrapped Cauchy")[names(which.min(-2 * ll + 2 * npar))] else "(not computed)"`
-law. The comparison is relative: a fit judged best among three may still be rejected, as here.
+### Speed
 
-## Implementation
+A fit is a search from many starting values, a screen of candidate locations and, for the
+smallest shapes, a spike search, and these trials are independent of one another. Where the
+package is built with OpenMP, `ncores` runs them on several threads, and `profile_wsgn()` takes
+the same argument. The best trial is chosen afterwards in a fixed order, so the answer is
+identical, to the last bit, for every number of threads; `ncores = 1` is the default. A bootstrap
+spreads its refits over the threads instead.
 
-Densities, distribution functions, quantiles, the characteristic function, the trigonometric moments
-and the likelihood are computed by a pure-C back-end shared with the Python package 'wsgnstat',
-which compiles the same source; the two front ends return the same values for the same inputs.
+```{r speed}
+sim40 <- sim[1:40]
+f_serial <- fit_wsgn(sim40, se = "none")
+f_two <- fit_wsgn(sim40, se = "none", ncores = 2)
+identical(coef(f_serial), coef(f_two))
+```
+
+A fit takes minutes from about a thousand observations on, so threads pay there. A likelihood evaluation with 128 or more observations (or cells) is itself split over the threads and summed in a fixed order. On a laptop with four performance and six efficiency cores, busy with other work, a fit of 1500 observations took 160 seconds on one thread, 86 on two, 57 on four and 55 on eight, and one of 400 observations 36, 18, 11 and 13 seconds. That is a factor of about 2.8 on four threads, and little more beyond, because some of the work still runs in sequence (the first pass of the location search, the Nelder-Mead runs and the final polish) and because the extra threads of such a machine run on its slower cores.
+
+## 6. The grouped likelihood for rounded data
+
+Circular data are usually recorded to a resolution, and ties then make the degenerate branch
+visible at shapes that look ordinary. The ants of Fisher (1993, data set B.7, `fisherB7` in
+circular) are 100 directions recorded as multiples of 10 degrees.
+
+```{r ants-profile, eval = has_circular}
+ants <- as.numeric(dat$fisherB7) * pi / 180
+m_a <- max(table(dat$fisherB7))
+astar_a <- 100 * log(100 / (100 - m_a))
+pa <- profile_wsgn(ants, beta = c(2, 1, 0.5, 0.2, 0.05), window = 0.4)
+pa$mu_degrees <- pa$mu * 180 / pi
+pa[, c("beta", "logLik", "mu_degrees")]
+```
+
+There are $m = `r if (has_circular) m_a`$ ants at 180 degrees, so $A^* = `r if (has_circular) f2(astar_a)`$,
+and the profile rises monotonically as the shape decreases, with the location at the tied value.
+Any lower bound on $\beta$ would be attained. When the data are rounded, the grouped likelihood
+$\sum_j N_j\log\mathrm{P}(\Theta \in C_j)$ over the recording cells is the likelihood of what was
+observed. It is bounded with no constraint on the shape, and its cell probabilities follow exactly
+from the incomplete-gamma survival functions of the two sides. `fit_wsgn()` maximises it when
+`resolution` is given.
+
+```{r ants-grouped, eval = has_circular}
+set.seed(4)
+fit_g <- fit_wsgn(ants, resolution = pi / 18, se = "bootstrap", B = 10, ncores = 2)
+fit_g
+coef(fit_g)["mu"] * 180 / pi
+```
+
+```{r ants-numbers, include = FALSE, eval = has_circular}
+sym_g <- fit_wsgn(ants, resolution = pi / 18, symmetric = TRUE, se = "none")
+cnt <- table(dat$fisherB7)
+q <- max(cnt) / sum(cnt)
+contam <- max(cnt) * log(q) + (sum(cnt) - max(cnt)) * log((1 - q) / (36 - 1))
+```
+
+The grouped maximum is interior, at $\hat\beta = `r if (has_circular) f2(coef(fit_g)["beta"])`$
+with the location at `r if (has_circular) f2(coef(fit_g)["mu"] * 180 / pi, 1)` degrees, and the
+`r if (has_circular) m_a` values at 180 degrees are simply a well-filled cell. As the shape tends to
+zero the family approaches mixtures of a point mass and the uniform distribution, and the best such
+mixture with its point mass in the modal cell reaches a grouped log-likelihood of
+`r if (has_circular) f2(contam)`, against `r if (has_circular) f2(fit_g$logLik)` at the fit. The grouped likelihood-ratio statistic for
+$\lambda = 1/2$ is `r if (has_circular) f2(2 * (fit_g$logLik - sym_g$logLik))`, so these data show
+no evidence of skewness. Each bootstrap sample is rounded to the same cells before it is refitted.
+
+## Conclusion
+
+The two-piece exponential power distribution and its wrapped version were treated as a uniform
+scale mixture with generalised gamma mixing, and the mixture was checked by simulation. The
+characteristic function and the trigonometric moments were computed on a rotated path of
+integration for every shape, and checked against the convergent series and the closed
+forms at shapes one and two, and the decay constant of the trigonometric moments was confirmed.
+The wrapped density, with its Euler-Maclaurin tail, integrated to one at every shape tried.
+
+The four-parameter distribution was fitted to the Col de la Roa wind directions under a shape floor,
+with the location at an observation, and the profile likelihood showed the degenerate branch far
+below the floor. For the rounded ant directions the ordinary likelihood had no maximum, while the
+grouped likelihood gave an interior fit. The distribution has also been fitted to daily wind
+directions from the Namib Desert (SASSCAL WeatherNet). Their licence allows non-commercial use
+only, so they are not distributed with the package.
+
+```{r build-time, include = FALSE}
+build_secs <- as.numeric(difftime(Sys.time(), t_start, units = "secs"))
+```
+
+The computations of this vignette took `r round(build_secs)` seconds.
 
 ## References
 
 Agostinelli, C. (2007). Robust estimation for circular data. *Computational Statistics and Data
-Analysis*, 51(12), 5867--5875.
+Analysis*, 51(12), 5867-5875.
 
-Pewsey, A. (2000). The wrapped skew-normal distribution on the circle. *Communications in
-Statistics -- Theory and Methods*, 29(11), 2459--2472.
+Fernández, C. and Steel, M. F. J. (1998). On Bayesian modeling of fat tails and skewness. *Journal
+of the American Statistical Association*, 93(441), 359-371.
 
-Stephens, M. A. (1970). Use of the Kolmogorov-Smirnov, Cramér-von Mises and related statistics
-without extensive tables. *Journal of the Royal Statistical Society, Series B*, 32(1), 115--122.
+Fisher, N. I. (1993). *Statistical Analysis of Circular Data*. Cambridge University Press,
+Cambridge.

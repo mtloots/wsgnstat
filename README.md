@@ -2,18 +2,16 @@
 
 [![R-CMD-check](https://github.com/mtloots/wsgnstat/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mtloots/wsgnstat/actions/workflows/R-CMD-check.yaml)
 
-The **skew generalised normal** distribution on the line and its **wrapping onto the circle**.
-Directional data — wind direction, animal headings, phase — need circular families, and the
-workhorses there are symmetric or only mildly skew. This family carries a shape parameter for tail
-weight and separate weights for asymmetry.
+The **two-piece exponential power distribution** on the line and its **wrapped version on the
+circle**, treated as a uniform scale mixture with generalised gamma mixing: given the mixing
+variable, the variable is uniform on an interval that contains the location. The package name keeps
+the authors' earlier name for the distribution, the wrapped skew generalised normal.
 
-The point of the implementation is the **characteristic function**. Estimating by matching
-trigonometric moments needs it, and the usual Fox-Wright series converges only over part of the
-parameter space; here it is evaluated through absolutely convergent integrals instead, so every
-shape parameter is reachable rather than only the convergent region.
-
-A closed form anchors the whole construction: at shape 2 with equal weights the circular law *is*
-the wrapped normal with sigma = 1/sqrt(2), and its trigonometric moments are exactly exp(-p^2/4).
+The characteristic function and the trigonometric moments are computed for every shape parameter,
+on a rotated path of integration; the wrapped density adds an Euler-Maclaurin tail to the image
+sum, so small shapes are covered; and the four-parameter
+wrapped distribution is fitted by maximum likelihood under a lower bound on the shape, or by the
+grouped likelihood for rounded data.
 
 One shared pure-C back-end serves two front ends:
 
@@ -21,5 +19,6 @@ One shared pure-C back-end serves two front ends:
 	wsgnstat-py/   Python package (ctypes; pip builds the same C at install time, and a source
 	               checkout compiles it on first import)
 
-The two are checked against each other value by value; parity_sync_guard.sh confirms the two
-copies of the C source are identical before any such comparison is trusted.
+The two are checked against each other value by value with tools/parity/parity_run.sh, which first
+runs parity_sync_guard.sh to confirm that the two copies of the C source are identical. The
+reference values used by the tests are made by the scripts in tools/.

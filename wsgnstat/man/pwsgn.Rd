@@ -3,51 +3,58 @@
 \name{pwsgn}
 \alias{pwsgn}
 \alias{qwsgn}
-\title{Distribution and quantile functions of the wrapped skew generalised normal distribution}
+\title{Distribution and quantile functions of the wrapped two-piece exponential power distribution}
 \usage{
-pwsgn(q, mu = 0, beta = 2, lam = 0.5, K = 50)
+pwsgn(q, mu = 0, beta = 2, lam = 0.5, K = 50, sigma = NULL)
 
-qwsgn(p, mu = 0, beta = 2, lam = 0.5, K = 50)
+qwsgn(p, mu = 0, beta = 2, lam = 0.5, K = 50, sigma = NULL)
 }
 \arguments{
 \item{q}{numeric vector of angles in radians.}
 
-\item{mu}{location (junction) parameter; for a skew law this is not the mean direction.}
+\item{mu}{location parameter.}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
 \item{lam}{skewness parameter in (0, 1); \code{0.5} is symmetric.}
 
-\item{K}{truncation of the wrapping sum (\code{abs(k) <= K}). The default \code{50} captures the
-whole mass to double precision for \code{beta >= 0.8}; for very heavy tails (\code{beta} near
-\code{0.3}) it does not, and \code{pwsgn(2 * pi, mu, beta, lam, K)} reports the mass that the
-truncated sum captures, so \code{K} can be raised until that is one.}
+\item{K}{number of images summed directly on each side of \code{mu} before the
+Euler-Maclaurin tail (a positive integer); more are added directly when the formula is not
+yet accurate there, and fewer are used when the rest is negligible.}
+
+\item{sigma}{scale parameter (> 0); \code{NULL} gives the reciprocal-rate subfamily.}
 
 \item{p}{numeric vector of probabilities.}
 }
 \value{
-\code{pwsgn} gives probabilities in \code{[0, 1]}: \code{0} for \code{q <= 0} and, for
-  \code{q >= 2 * pi}, the mass captured by the wrapping sum truncated at \code{K} (one to double
-  precision unless the tails are very heavy; see \code{\link{dwsgn}}). \code{qwsgn} gives angles
-  in \code{[0, 2 * pi]}, with a warning for any \code{p} above the captured mass.
+\code{pwsgn} gives probabilities in \code{[0, 1]}: \code{0} for \code{q <= 0} and
+  \code{1} for \code{q >= 2 * pi}. \code{qwsgn} gives angles in \code{[0, 2 * pi]}.
 }
 \description{
-The distribution function is measured anticlockwise from angle \code{0}:
-\code{pwsgn(theta)} is the probability of the arc \code{[0, theta]}, computed as the sum over
-turns of the line law's mass on \code{[2 pi k, theta + 2 pi k]} through the regularised
-incomplete gamma function, so no numerical quadrature is involved. The quantile function inverts
-it by bisection. The identified parameterisation of \code{\link{dwsgn}} is used.
+The distribution function is measured anticlockwise from angle \code{0}: \code{pwsgn(theta)} is
+the probability of the arc \code{[0, theta]}. It is computed from the incomplete-gamma survival
+functions of the two sides, summed over images, with the Euler-Maclaurin tail beyond the
+\code{K}-th image. The arc is described by its start and its width, so a short arc keeps its
+relative accuracy: for an arc shorter than 0.01 the first image is taken from the incomplete
+gamma function where that is accurate and by Gauss-Legendre quadrature of the density otherwise,
+and the incomplete gamma functions are evaluated from the logarithm of their argument, so that
+\code{(rate x)^beta} never underflows next to the location, at any shape. Small probabilities
+therefore keep their relative accuracy down to the underflow limit, on both sides of the location
+and for large shapes too (checked for shapes 0.3 to 50). The quantile function inverts it by
+bisection with geometric midpoints while the bracket is wide, so that small probabilities get
+quantiles with relative accuracy (for instance \code{qwsgn(1e-300)}). The parameters are as in
+\code{\link{dwsgn}}.
 }
 \examples{
 ## the distribution function is the integral of the density
-pwsgn(2, mu = 1, beta = 1.5, lam = 0.3)
-integrate(dwsgn, 0, 2, mu = 1, beta = 1.5, lam = 0.3)$value
+pwsgn(2, mu = 1, beta = 1.5, lam = 0.3, sigma = 0.5)
+integrate(dwsgn, 0, 2, mu = 1, beta = 1.5, lam = 0.3, sigma = 0.5)$value
 ## the quantile function inverts it
 p <- c(0.05, 0.25, 0.5, 0.75, 0.95)
-q <- qwsgn(p, mu = 1, beta = 1.5, lam = 0.3)
-rbind(p, pwsgn(q, mu = 1, beta = 1.5, lam = 0.3))
+q <- qwsgn(p, mu = 1, beta = 1.5, lam = 0.3, sigma = 0.5)
+rbind(p, pwsgn(q, mu = 1, beta = 1.5, lam = 0.3, sigma = 0.5))
 ## the curve rises from 0 to 1 around the circle
 th <- seq(0, 2 * pi, length.out = 361)
-plot(th, pwsgn(th, mu = 1, beta = 1.5, lam = 0.3), type = "l",
+plot(th, pwsgn(th, mu = 1, beta = 1.5, lam = 0.3, sigma = 0.5), type = "l",
      xlab = "angle (radians)", ylab = "distribution function")
 }

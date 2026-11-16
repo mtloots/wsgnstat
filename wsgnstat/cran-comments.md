@@ -1,50 +1,62 @@
 ## Submission
 
-This is the first submission of wsgnstat, at version 0.1.0.
+This is an update of wsgnstat from 0.1.0 (on CRAN since 14 November 2026) to 0.1.1. It fixes
+numerical defects found after the release and adds the four-parameter likelihood:
+
+* `cfsgn()` and `trig_moments()` were inaccurate for shapes below about 0.6 (the characteristic
+  function at zero was 40624 instead of 1 at shape 0.1), because Simpson's rule on a very long
+  range could not resolve it. The integral is now taken along a rotated path by an exponentially
+  convergent trapezoid rule for every shape; against 120-digit series values for shapes 0.1 to 3
+  (t = 1, 2, 3, two scales) the relative error is below 1e-14.
+* `dwsgn()`, `pwsgn()` and `qwsgn()` truncated the image sum at 50 images, which was inaccurate for
+  small shapes (relative error 0.14 at shape 0.3). An Euler-Maclaurin tail with the exact
+  incomplete-gamma integral now corrects this; against 40-digit image sums for shapes 0.1 to 2
+  (six angles, two scales) the relative error of the density is below 1e-14.
+* `fit_wsgn()` and `profile_wsgn()` take `ncores` (default 1) and run the independent trials inside
+  a fit on that many OpenMP threads, with a result that is bit-identical for every number of
+  threads; the package builds and runs without OpenMP (via `$(SHLIB_OPENMP_CFLAGS)`), where
+  `ncores` is ignored. Examples and tests use at most two threads.
+* A one-sided fit that stopped short of the maximum at a cusp is polished further.
+* The help pages wrongly called a three-parameter subfamily "the identified parameterisation"; the
+  full four-parameter family is identifiable, and the documentation now says so.
+* New: the scale argument `sigma` for the wrapped functions, `fit_wsgn()` (maximum likelihood for
+  the four-parameter wrapped distribution, with a shape floor, the grouped likelihood for rounded
+  data, and information or bootstrap standard errors), `profile_wsgn()`, `grouped_loglik()` and
+  `trig_decay()`. The fit covers both the regular branch and the spike branch at the shape floor,
+  flags fits on any bound, and refuses degenerate or non-finite data.
+* The Title and Description now describe the distribution under its usual name, the wrapped
+  two-piece exponential power distribution; the package name is unchanged.
 
 ## Test environments
 
-* local macOS 27 (arm64), R 4.6.1, `R CMD check --as-cran`: 0 errors, 0 warnings, 1 note.
-* win-builder R-devel and R-release: the same tarball was uploaded on 29 October 2026.
+* local macOS 27 (arm64), R 4.6.1, `R CMD check --as-cran` on the built tarball, with
+  `_R_CHECK_FORCE_SUGGESTS_=true`.
 
 ## R CMD check results
 
 0 errors | 0 warnings | 1 note
 
-* New submission. Expected for a first submission. In the local check the same note also listed
-  the GitHub URLs (repository, issues page and Actions badge) as returning 404, because the
-  repository was private when the check was run; it has been made public for this submission and
-  the URLs resolve.
+* "Days since last update: 2". Version 0.1.0 was published on 14 November 2026; this update follows
+  quickly because it corrects numerical errors in the characteristic function and the wrapped
+  density at small shape parameters, which users of 0.1.0 would otherwise meet.
 
 ## Reverse dependencies
 
-None; this is a new package.
+There are no reverse dependencies.
 
 ## Notes for the reviewer
 
-The package compiles a small pure-C back-end (no OpenMP, no random numbers in C, no printing),
-registered through `R_registerRoutines` and called with `.C`. The same C source also backs a
-Python package of the same name, and the two return byte-identical values for the same inputs.
+The package compiles a pure-C back-end registered through `R_registerRoutines` and called with
+`.C`; it uses OpenMP, through `SHLIB_OPENMP_CFLAGS`, for the independent trials inside a fit or
+profile and for the bootstrap refits, on `ncores` threads (default 1), with the same result for
+every number of threads. The C code draws no random
+numbers from R: bootstrap samples are drawn in R with `set.seed()` reproducibility, and the only
+random stream in C is a fixed-seed generator for starting values. The same C source backs a Python
+package of the same name, and the two return byte-identical values.
 
-The correctness claim is that the densities, distribution functions, quantiles, characteristic
-function and trigonometric moments are right for every shape parameter, and that the estimators
-recover the parameters that generated the data. The tests establish this against known values, not
-merely by running the code:
-
-* the wrapped density equals the wrapped normal density (sigma = 1/sqrt(2)) at beta = 2 and
-  lam = 0.5 to 1e-9, and the trigonometric moments equal exp(-p^2/4) to 1e-9;
-* the line and wrapped densities integrate to one, and the line and wrapped distribution functions
-  agree with numerical integration of the densities to 1e-9, with the normal distribution function
-  and the wrapped normal distribution function as closed-form anchors;
-* the characteristic function agrees with the Fourier transform of the density computed by
-  quadrature, including at a skew, heavy-tailed member;
-* the quantile function inverts the distribution function to 1e-12;
-* draws from `rwsgn()` pass a Kolmogorov-Smirnov test against the exact distribution function at
-  the 0.1 per cent level;
-* for three known parameter sets (including beta = 0.8, below the region where the usual series for
-  the characteristic function applies) the moment estimator lands within four of its sandwich
-  standard errors of the truth and the maximum likelihood estimator close to it.
-
-Examples run in under two seconds each; one bootstrap example is wrapped in `\donttest{}` because it
-refits the model once per replicate. The vignette uses the 'circular' package (Suggests) for a
-wind-direction data set and is skipped gracefully when it is unavailable.
+The correctness tests compare against known values: the characteristic function against
+120-digit values of its convergent series for shapes 0.1 to 3 and against closed forms at shapes
+one and two, the wrapped density against 40-digit Euler-Maclaurin image sums, the distribution
+functions against numerical integration, the mixture representation by simulation, and the
+maximum likelihood fits against values computed independently for two data sets of the 'circular'
+package. Examples run in a few seconds; the bootstrap example is wrapped in `\donttest{}`.

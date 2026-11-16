@@ -2,7 +2,7 @@
 % Please edit documentation in R/wsgnstat.R
 \name{dsgn}
 \alias{dsgn}
-\title{Density of the skew generalised normal distribution on the line (C back-end)}
+\title{Density of the two-piece exponential power distribution on the line (C back-end)}
 \usage{
 dsgn(x, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5)
 }
@@ -13,29 +13,32 @@ dsgn(x, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5)
 
 \item{sigma}{scale parameter (> 0).}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
-\item{lam1}{right-hand rate parameter (> 0).}
+\item{lam1}{right-hand rate parameter (> 0); the right-hand rate is \code{lam1 / sigma}.}
 
-\item{lam2}{left-hand rate parameter (> 0).}
+\item{lam2}{left-hand rate parameter (> 0); the left-hand rate is \code{lam2 / sigma}.}
 }
 \value{
 the probability density function evaluated at \code{x}.
 }
 \description{
-The scale mixture of a uniform and a generalised gamma variable, with two-piece exponential-power
-form: left rate \code{lam2}, right rate \code{lam1}.
+The density is \code{c exp(-(lam1 (x - mu) / sigma)^beta)} for \code{x >= mu} and
+\code{c exp(-(lam2 (mu - x) / sigma)^beta)} for \code{x < mu}. With \code{lam1 = lam} and
+\code{lam2 = 1 - lam} it is the distribution of \code{mu + Z V}, where \code{Z^beta} is gamma
+distributed with shape \code{1 + 1/beta} and \code{V} is uniform on
+\code{[-sigma / (1 - lam), sigma / lam]}, independent of \code{Z}: a uniform scale mixture with
+generalised gamma mixing, with \code{P(X < mu) = lam}.
 }
 \examples{
-## a right-skew, heavy-tailed member and the normal member it generalises
+## a right-skew member with a cusp at its location, and the normal member
 x <- seq(-4, 6, length.out = 401)
-f_skew <- dsgn(x, mu = 0, sigma = 1, beta = 1.3, lam1 = 0.3, lam2 = 0.8)
+f_skew <- dsgn(x, mu = 0, sigma = 1, beta = 0.8, lam1 = 0.3, lam2 = 0.7)
 f_norm <- dsgn(x, mu = 0, sigma = 0.5, beta = 2, lam1 = 0.5, lam2 = 0.5)
 plot(x, f_skew, type = "l", ylab = "density")
 lines(x, f_norm, lty = 2)
-## at beta = 2 with lam1 = lam2 = 0.5 and sigma = 0.5 the law is N(0, 1/2)
+## at beta = 2 with lam1 = lam2 = 0.5 and sigma = 0.5 the distribution is N(0, 1/2)
 max(abs(f_norm - dnorm(x, 0, sqrt(1 / 2))))
-## the density integrates to one (Riemann sum on a wide grid)
-xx <- seq(-40, 40, length.out = 80001)
-sum(dsgn(xx, 0, 1, 1.3, 0.3, 0.8)) * (xx[2] - xx[1])
+## the density integrates to one
+integrate(dsgn, -Inf, Inf, mu = 0, sigma = 1, beta = 0.8, lam1 = 0.3, lam2 = 0.7)$value
 }

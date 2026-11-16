@@ -2,7 +2,7 @@
 % Please edit documentation in R/wsgnstat.R
 \name{rsgn}
 \alias{rsgn}
-\title{Random generation from the (wrapped) skew generalised normal distribution}
+\title{Random generation from the two-piece exponential power distribution on the line}
 \usage{
 rsgn(n, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5, wrap = FALSE)
 }
@@ -13,30 +13,31 @@ rsgn(n, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5, wrap = FALSE)
 
 \item{sigma}{scale parameter (> 0).}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
-\item{lam1}{right-hand rate parameter (> 0).}
+\item{lam1}{right-hand rate parameter (> 0); the right-hand rate is \code{lam1 / sigma}.}
 
-\item{lam2}{left-hand rate parameter (> 0).}
+\item{lam2}{left-hand rate parameter (> 0); the left-hand rate is \code{lam2 / sigma}.}
 
-\item{wrap}{logical; reduce modulo \code{2*pi}.}
+\item{wrap}{logical; reduce modulo \code{2 pi}.}
 }
 \value{
 a numeric vector of draws.
 }
 \description{
-Uses the stochastic representation: \code{U^beta} is Gamma with shape \code{1 + 1/beta}, a
-uniform variate is drawn conditionally, and the product is wrapped when \code{wrap = TRUE}.
+Uses the uniform scale mixture: \code{Z^beta} is drawn from the gamma distribution with shape
+\code{1 + 1/beta}, and the draw is uniform on \code{[mu - Z sigma / lam2, mu + Z sigma / lam1]},
+an interval that contains \code{mu}; a single uniform variable decides the side. The draws are
+reduced modulo \code{2 pi} when \code{wrap = TRUE}.
 }
 \examples{
 set.seed(2)
-x <- rsgn(5000, mu = 0, sigma = 1, beta = 1.3, lam1 = 0.3, lam2 = 0.8)
+x <- rsgn(5000, mu = 0, sigma = 1, beta = 1.3, lam1 = 0.3, lam2 = 0.7)
 hist(x, breaks = 60, freq = FALSE, main = "")
-curve(dsgn(x, 0, 1, 1.3, 0.3, 0.8), add = TRUE)
-## mass left of the location: lam1 / (lam1 + lam2) = 0.2727
+curve(dsgn(x, 0, 1, 1.3, 0.3, 0.7), add = TRUE)
+## the mass to the left of the location is lam1 / (lam1 + lam2) = 0.3
 mean(x < 0)
 }
 \seealso{
-\code{\link{rwsgn}} for draws from the wrapped law in its identified
-  parameterisation.
+\code{\link{rwsgn}} for draws from the wrapped distribution.
 }

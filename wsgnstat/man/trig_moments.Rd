@@ -2,33 +2,56 @@
 % Please edit documentation in R/wsgnstat.R
 \name{trig_moments}
 \alias{trig_moments}
-\title{Population trigonometric moments of the wrapped family (C back-end)}
+\alias{trig_decay}
+\title{Trigonometric moments of the wrapped distribution (C back-end)}
 \usage{
-trig_moments(P = 2, mu = 0, beta = 2, lam = 0.5)
+trig_moments(P = 2, mu = 0, beta = 2, lam = 0.5, sigma = NULL, tol = 1e-12)
+
+trig_decay(beta = 2, lam = 0.5, sigma = NULL)
 }
 \arguments{
-\item{P}{highest order p.}
+\item{P}{highest order \code{p}, a whole number from 1 to \code{1e7}.}
 
-\item{mu}{location (junction) parameter; for a skew law this is not the mean direction.}
+\item{mu}{location parameter.}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
 \item{lam}{skewness parameter in (0, 1); \code{0.5} is symmetric.}
+
+\item{sigma}{scale parameter (> 0); \code{NULL} gives the reciprocal-rate subfamily.}
+
+\item{tol}{tolerance, as in \code{\link{cfsgn}}: one finite number in (0, 1), raised to
+\code{1e-14} if smaller.}
 }
 \value{
-a list with components \code{A} and \code{B}, the cosine and sine moments for
-  \code{p = 1, ..., P}.
+\code{trig_moments}: a list with components \code{A} and \code{B}, the cosine and sine
+  moments for \code{p = 1, ..., P}. \code{trig_decay}: a named vector with the constant \code{C}
+  and the exponent \code{1 + beta}.
 }
 \description{
-Population trigonometric moments of the wrapped family (C back-end)
+The trigonometric moments of the wrapped distribution are the values of the characteristic
+function of the line distribution at the integers, \code{phi_p = E exp(i p Theta) = A_p + i B_p},
+computed as in \code{\link{cfsgn}}, so their error is absolute, of order \code{tol / p} (in
+practice of order \code{tol}: about \code{1e-15} to \code{3e-15} for shapes up to about 3, a few times
+\code{1e-15} for shapes 5 to 20, and up to about \code{1e-14} for shapes up to 50, at the default
+\code{tol}); moments much smaller than that (the far moments of a smooth
+member) carry no relative accuracy. \code{trig_decay} gives the constant \code{C} of the exact
+decay rate \code{|phi_p| ~ C p^-(1 + beta)} as \code{p} grows, which holds unless
+\code{lam = 0.5} and \code{beta} is an even integer (then \code{C = 0} and the decay is faster
+than any power).
 }
 \examples{
-## the reduction to the wrapped normal in the trigonometric moments: exp(-p^2 / 4)
-tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5)
-rbind(engine = tm$A, closed_form = exp(-(1:4)^2 / 4))
-## a skew member: the first moment against a large simulated sample
-tm1 <- trig_moments(1, mu = 1, beta = 1.5, lam = 0.3)
+## the reduction to the wrapped normal: exp(-sigma^2 p^2) at beta = 2, lam = 0.5
+tm <- trig_moments(4, mu = 0, beta = 2, lam = 0.5, sigma = 0.5)
+rbind(engine = tm$A, closed_form = exp(-0.25 * (1:4)^2))
+## a skew member with a small shape: the moments approach C p^-(1 + beta)
+tm <- trig_moments(400, mu = 0, beta = 0.3, lam = 0.3, sigma = 0.4)
+dc <- trig_decay(beta = 0.3, lam = 0.3, sigma = 0.4)
+p <- c(10, 100, 400)
+Mod(complex(real = tm$A[p], imaginary = tm$B[p])) * p^dc["exponent"] / dc["C"]
+## the first moment against a large simulated sample
+tm1 <- trig_moments(1, mu = 1, beta = 1.5, lam = 0.3, sigma = 0.5)
 set.seed(1)
-th <- rwsgn(1e5, mu = 1, beta = 1.5, lam = 0.3)
+th <- rwsgn(1e5, mu = 1, beta = 1.5, lam = 0.3, sigma = 0.5)
 rbind(population = c(tm1$A, tm1$B), sample = c(mean(cos(th)), mean(sin(th))))
 }

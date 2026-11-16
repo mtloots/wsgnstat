@@ -2,7 +2,16 @@
 #
 # MANUAL ONLY (workflow_dispatch). Trigger it before a PyPI release; the artefacts are uploaded to
 # the run. Linux x86_64 and macOS arm64, CPython 3.10 to 3.13, matching the package's classifiers.
-# The C has no OpenMP, so there is no runtime library to bundle.
+#
+# OPENMP. setup.py builds the C with OpenMP where the compiler has it and falls back to a serial
+# library otherwise (the build never fails for lack of OpenMP). LINUX wheels are built with OpenMP
+# (gcc -fopenmp inside the manylinux image); auditwheel, cibuildwheel's default repair step, copies
+# libgomp into the wheel, and the test command asserts wsgnstat.HAS_OPENMP so that a wheel that
+# silently fell back to serial fails the workflow. macOS wheels are deliberately SERIAL
+# (WSGN_OPENMP=0): a bundled libomp collides with the copy that scikit-learn or PyTorch load into
+# the same process ("OMP: Error #15"), and delocate refuses a libomp built for a newer macOS than
+# the wheel's deployment target. macOS users who want threads build from the sdist with
+# WSGN_OPENMP=1 and Homebrew's libomp.
 #
 # PUBLISHING. The publish job uses PyPI trusted publishing and runs only when BOTH the `publish`
 # input is ticked AND the repository variable PYPI_PUBLISHER_READY is 'true'. Set that variable
@@ -47,8 +56,15 @@ jobs:
           CIBW_SKIP: "*-musllinux_* *_i686"
           CIBW_ARCHS_LINUX: x86_64
           CIBW_ARCHS_MACOS: arm64
+          CIBW_ENVIRONMENT_LINUX: WSGN_OPENMP=1
+          CIBW_ENVIRONMENT_MACOS: WSGN_OPENMP=0
           CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: python -m pytest -q {package}/tests
+          CIBW_TEST_COMMAND_LINUX: >-
+            python -c "import wsgnstat; assert wsgnstat.HAS_OPENMP, 'Linux wheel built without OpenMP'" &&
+            python -m pytest -q {package}/tests
+          CIBW_TEST_COMMAND_MACOS: >-
+            python -c "import wsgnstat; assert not wsgnstat.HAS_OPENMP" &&
+            python -m pytest -q {package}/tests
 
       - name: Build sdist
         if: matrix.os == 'ubuntu-latest'

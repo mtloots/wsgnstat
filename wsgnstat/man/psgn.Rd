@@ -2,7 +2,7 @@
 % Please edit documentation in R/wsgnstat.R
 \name{psgn}
 \alias{psgn}
-\title{Distribution function of the skew generalised normal distribution on the line (C back-end)}
+\title{Distribution function of the two-piece exponential power distribution on the line}
 \usage{
 psgn(q, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5)
 }
@@ -13,11 +13,11 @@ psgn(q, mu = 0, sigma = 1, beta = 2, lam1 = 0.5, lam2 = 0.5)
 
 \item{sigma}{scale parameter (> 0).}
 
-\item{beta}{shape (tail) parameter (> 0).}
+\item{beta}{shape parameter (> 0).}
 
-\item{lam1}{right-hand rate parameter (> 0).}
+\item{lam1}{right-hand rate parameter (> 0); the right-hand rate is \code{lam1 / sigma}.}
 
-\item{lam2}{left-hand rate parameter (> 0).}
+\item{lam2}{left-hand rate parameter (> 0); the left-hand rate is \code{lam2 / sigma}.}
 }
 \value{
 the distribution function evaluated at \code{q}.

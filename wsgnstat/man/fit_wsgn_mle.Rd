@@ -2,7 +2,7 @@
 % Please edit documentation in R/wsgnstat.R
 \name{fit_wsgn_mle}
 \alias{fit_wsgn_mle}
-\title{Fit the wrapped skew generalised normal by maximum likelihood (C back-end)}
+\title{Fit the reciprocal-rate subfamily by maximum likelihood}
 \usage{
 fit_wsgn_mle(theta, start = NULL, K = 50, B = 0)
 }
@@ -12,7 +12,7 @@ fit_wsgn_mle(theta, start = NULL, K = 50, B = 0)
 \item{start}{numeric starting value \code{c(mu, beta, lam)}; default is the trigonometric-moment
 estimate.}
 
-\item{K}{truncation of the wrapping sum.}
+\item{K}{largest number of images summed directly, as in \code{\link{dwsgn}}.}
 
 \item{B}{number of parametric-bootstrap replicates for standard errors; \code{0} skips them.}
 }
@@ -20,9 +20,12 @@ estimate.}
 a list with \code{par}, \code{logLik}, and (if \code{B > 0}) \code{se}.
 }
 \description{
-Nelder-Mead over the identified parameters, with the wrapped log-likelihood evaluated in C.
-Standard errors, when requested, come from a parametric bootstrap, the observed information
-being unstable near the interior cusp the density develops as \code{beta} approaches one.
+Nelder-Mead over the three parameters \code{(mu, beta, lam)} of the reciprocal-rate subfamily
+\code{sigma = sqrt(lam (1 - lam))}, a restriction of the model on which the likelihood is
+bounded, with optional parametric-bootstrap standard errors. Kept from version 0.1.0 for backward
+compatibility; \code{\link{fit_wsgn}} fits the full four-parameter distribution. Since version
+0.1.1 the wrapped density includes the Euler-Maclaurin tail, so log-likelihoods at shapes below
+about 0.6 differ from those of version 0.1.0, which were truncated.
 }
 \examples{
 set.seed(12)
@@ -32,7 +35,7 @@ fit <- fit_wsgn_mle(th)
 round(rbind(truth = truth, estimate = fit$par), 3)
 fit$logLik
 \donttest{
-## bootstrap standard errors refit the model once per replicate (a few seconds for B = 30)
+## bootstrap standard errors refit the model once per replicate
 fit_b <- fit_wsgn_mle(th, B = 30)
 round(rbind(estimate = fit_b$par, se = fit_b$se), 3)
 }

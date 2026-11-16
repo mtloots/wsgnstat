@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wsgnstat"
-version = "0.1.0"
-description = "The wrapped skew generalised normal distribution on a shared pure-C back-end (also backing the R package wsgnstat)"
+version = "0.1.1"
+description = "The wrapped two-piece exponential power distribution (named wrapped skew generalised normal after the authors' earlier usage) as a uniform scale mixture, on a shared pure-C back-end (also backing the R package wsgnstat)"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "GPL-3.0-only"
