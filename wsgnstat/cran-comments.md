@@ -31,6 +31,11 @@ numerical defects found after the release and adds the four-parameter likelihood
 
 * local macOS 27 (arm64), R 4.6.1, `R CMD check --as-cran` on the built tarball, with
   `_R_CHECK_FORCE_SUGGESTS_=true`.
+* Debian (x86_64 and aarch64), R 4.6.2, gcc 16 with OpenMP: the full test suite, and on aarch64
+  `R CMD check --as-cran`.
+* Windows (MinGW-w64, msvcrt and UCRT): the C sources cross-compiled and linked, with and without
+  OpenMP.
+* GitHub Actions R-CMD-check matrix (Ubuntu R devel, release and oldrel-1; macOS and Windows R release).
 
 ## R CMD check results
 
