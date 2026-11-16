@@ -1,3 +1,19 @@
+## Resubmission
+
+The first submission of 0.1.1 was archived by the incoming pre-tests on 16 November 2026. This
+version changes only the vignette and one example:
+
+* Overall check time on r-devel-windows was 15 minutes, of which 576 s were spent re-building the
+  vignette, which fits the four-parameter distribution to two data sets. The vignette is now
+  precomputed: `vignettes/wsgnstat.Rmd.orig` (excluded from the build) was knitted with this
+  version, and every computed result is identical to the earlier vignette.
+* The `fit_wsgn()` examples took 11.4 s on r-devel-windows. The three-sample bootstrap fit has been
+  removed from them (the bootstrap is still shown in the vignette).
+* A bracket in the caption of the vignette's Figure 1 had stopped the figure from being shown; the
+  caption is reworded.
+* The words flagged as possibly misspelled in DESCRIPTION are correct: Fernández and Ehlers are
+  authors' surnames, and Maclaurin is part of "Euler-Maclaurin".
+
 ## Submission
 
 This is an update of wsgnstat from 0.1.0 (on CRAN since 14 November 2026) to 0.1.1. It fixes

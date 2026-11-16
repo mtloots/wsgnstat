@@ -677,10 +677,11 @@ fit_wsgn_mle <- function(theta, start = NULL, K = 50, B = 0) {
 #' th10 <- (round(th / h) * h) %% (2 * pi)
 #' fit10 <- fit_wsgn(th10, resolution = h, se = "none")
 #' rbind(exact = coef(fit), grouped = coef(fit10))
-#' ## a shape below one: the location is an observation, standard errors by bootstrap
+#' ## a shape below one: the location is an observation (se = "bootstrap" would add
+#' ## bootstrap standard errors, at the cost of one such fit per sample)
 #' th2 <- rwsgn(60, mu = 2, beta = 0.9, lam = 0.4, sigma = 0.3)
-#' fit2 <- fit_wsgn(th2, se = "bootstrap", B = 3)
-#' fit2$se_method
+#' fit2 <- fit_wsgn(th2, se = "none")
+#' coef(fit2)
 #' any(th2 %% (2 * pi) == fit2$par["mu"])
 #' }
 #' @export
